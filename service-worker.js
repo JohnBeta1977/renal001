@@ -2,22 +2,22 @@
 const CACHE_NAME = 'renalcare-pwa-cache-v4'; // Mantener la versión para no invalidar el caché si no es necesario
 const urlsToCache = [
     '/',
-    '/index.html',
-    '/app.js',
-    '/manifest.json',
+    'https://johnbeta1977.github.io/renal001/index.html',
+    'https://johnbeta1977.github.io/renal001/app.js',
+    'https://johnbeta1977.github.io/renal001/manifest.json',
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
     // Rutas de imágenes ahora directamente en /image/
-    '/image/bg.jpg',
-    '/image/logo.png',
-    '/image/icon-72x72.png',
-    '/image/icon-96x96.png',
-    '/image/icon-128x128.png',
-    '/image/icon-144x144.png',
-    '/image/icon-152x152.png',
-    '/image/icon-192x192.png',
-    '/image/icon-384x384.png',
-    '/image/icon-512x512.png'
+    'https://johnbeta1977.github.io/renal001/image/bg.jpg',
+    'https://johnbeta1977.github.io/renal001/image/logo.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-72x72.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-96x96.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-128x128.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-144x144.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-152x152.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-192x192.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-384x384.png',
+    'https://johnbeta1977.github.io/renal001/image/icon-512x512.png'
 ];
 
 // Evento de instalación: Cacha los recursos estáticos
