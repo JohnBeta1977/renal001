@@ -144,6 +144,37 @@
             font-size: 0.65rem; /* Tamaño del texto más pequeño */
             line-height: 1;
         }
+
+        /* Estilo para el botón flotante de acción */
+        #guided-action-button {
+            bottom: calc(3.5rem + 1rem); /* Altura del nav inferior + margen */
+            right: 1rem;
+            min-width: 120px; /* Asegura que el texto quepa */
+            text-align: center;
+        }
+
+        /* Estilos para el menú desplegable de "Más opciones" */
+        #more-options-dropdown {
+            position: absolute;
+            bottom: calc(3.5rem + 0.5rem); /* Encima del footer con un pequeño margen */
+            right: 1rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 0.5rem 0;
+            z-index: 999; /* Justo debajo del footer para que no lo tape */
+            min-width: 150px; /* Ancho mínimo para los items */
+        }
+        #more-options-dropdown .bottom-nav-item {
+            width: 100%;
+            justify-content: flex-start; /* Alinear texto a la izquierda */
+            padding: 0.5rem 1rem;
+            flex-direction: row; /* Icono y texto en la misma fila */
+            gap: 0.5rem; /* Espacio entre icono y texto */
+        }
+        #more-options-dropdown .bottom-nav-item span {
+            font-size: 0.875rem; /* Texto más grande en el dropdown */
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -266,17 +297,20 @@
                         <!-- Campo para subir foto de perfil -->
                         <div class="md:col-span-2">
                             <label for="profilePicture" class="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
+                            <p class="mt-1 text-xs text-gray-500 mb-2">Sube una imagen para tu perfil.</p>
                             <div class="flex items-center space-x-4">
                                 <img id="profile-picture-preview" class="h-20 w-20 rounded-full object-cover border-2 border-gray-300" src="https://placehold.co/80x80/cccccc/333333?text=Foto" alt="Previsualización de foto de perfil">
-                                <input type="file" id="profilePicture" name="profilePicture" accept="image/*" class="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                <div class="flex flex-col">
+                                    <input type="file" id="profilePicture" name="profilePicture" accept="image/*" class="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    <span id="selected-file-name" class="text-xs text-gray-500 mt-1">Ningún archivo seleccionado</span>
+                                </div>
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">Sube una imagen para tu perfil.</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-end pt-4">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                    <button type="submit" id="profile-save-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
                         <i class="fas fa-save mr-2"></i> Guardar Perfil
                     </button>
                 </div>
@@ -740,7 +774,7 @@
                     <div class="mt-2 text-gray-700 text-sm">
                         <p class="mb-2"><strong>Rutinas y Estructura:</strong> Establece y mantén rutinas diarias predecibles para reducir la ansiedad y mejorar la organización.</p>
                         <p class="mb-2"><strong>Comunicación Visual:</strong> Utiliza pictogramas, horarios visuales y apoyos visuales para facilitar la comprensión y expresión.</p>
-                        <p class="mb-2"><strong>Estrategias de Regulación Sensorial:</strong> Identifica y utiliza "zonas de calma" o actividades que ayuden a regular la sobrecarga sensorial (ej: auriculares con cancelación de ruido, juguetes sensoriales).</p>
+                        <p class="mb-2"><strong>Estrategias de Regulación Sensorial:</strong> Identifica y utiliza "zones de calma" o actividades que ayuden a regular la sobrecarga sensorial (ej: auriculares con cancelación de ruido, juguetes sensoriales).</p>
                         <p class="mb-2"><strong>Habilidades Sociales:</strong> Practica interacciones sociales en entornos seguros y estructurados. El juego de roles puede ser útil.</p>
                         <p><strong>Apoyo Emocional:</strong> Fomenta la expresión de emociones y busca apoyo de terapeutas o grupos de apoyo especializados en ATM.</p>
                     </div>
@@ -776,30 +810,43 @@
             </button>
             <button id="nav-meds" class="bottom-nav-item">
                 <i class="fas fa-pills text-xl"></i>
-                <span class="text-xs mt-1">Medicamentos</span>
+                <span class="text-xs mt-1">Med/tos</span>
             </button>
             <button id="nav-labs" class="bottom-nav-item">
                 <i class="fas fa-flask text-xl"></i>
                 <span class="text-xs mt-1">Citas/Labs</span>
             </button>
-            <button id="nav-agenda" class="bottom-nav-item">
-                <i class="fas fa-address-book text-xl"></i>
-                <span class="text-xs mt-1">Agenda</span>
-            </button>
-            <button id="nav-cardiology" class="bottom-nav-item hidden">
-                <i class="fas fa-heartbeat text-xl"></i>
-                <span class="text-xs mt-1">Cardiología</span>
-            </button>
-            <button id="nav-autism" class="bottom-nav-item hidden">
-                <i class="fas fa-brain text-xl"></i>
-                <span class="text-xs mt-1">ATM</span>
-            </button>
-            <button id="nav-wellness" class="bottom-nav-item">
-                <i class="fas fa-leaf text-xl"></i>
-                <span class="text-xs mt-1">Bienestar</span>
+            <button id="nav-more" class="bottom-nav-item">
+                <i class="fas fa-ellipsis-h text-xl"></i>
+                <span class="text-xs mt-1">Más</span>
             </button>
         </div>
     </footer>
+
+    <!-- Menú desplegable para "Más opciones" -->
+    <div id="more-options-dropdown" class="hidden fixed rounded-lg">
+        <button id="nav-agenda" class="bottom-nav-item">
+            <i class="fas fa-address-book text-xl"></i>
+            <span class="text-xs mt-1">Agenda</span>
+        </button>
+        <button id="nav-cardiology" class="bottom-nav-item hidden">
+            <i class="fas fa-heartbeat text-xl"></i>
+            <span class="text-xs mt-1">Cardiología</span>
+        </button>
+        <button id="nav-autism" class="bottom-nav-item hidden">
+            <i class="fas fa-brain text-xl"></i>
+            <span class="text-xs mt-1">ATM</span>
+        </button>
+        <button id="nav-wellness" class="bottom-nav-item">
+            <i class="fas fa-leaf text-xl"></i>
+            <span class="text-xs mt-1">Bienestar</span>
+        </button>
+    </div>
+
+    <!-- Botón de acción flotante para el flujo guiado -->
+    <button id="guided-action-button" class="hidden fixed bottom-20 right-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out z-40">
+        Iniciar Registro Guiado
+    </button>
 
     <!-- Script principal de la aplicación -->
     <script src="/app.js"></script>
