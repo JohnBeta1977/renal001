@@ -7,17 +7,17 @@ const urlsToCache = [
     '/manifest.json',
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
-    // Rutas de imágenes ahora directamente en /images/
-    '/images/bg.jpg',
-    '/images/logo.png',
-    '/images/icon-72x72.png',
-    '/images/icon-96x96.png',
-    '/images/icon-128x128.png',
-    '/images/icon-144x144.png',
-    '/images/icon-152x152.png',
-    '/images/icon-192x192.png',
-    '/images/icon-384x384.png',
-    '/images/icon-512x512.png'
+    // Rutas de imágenes ahora directamente en /image/
+    '/image/bg.jpg',
+    '/image/logo.png',
+    '/image/icon-72x72.png',
+    '/image/icon-96x96.png',
+    '/image/icon-128x128.png',
+    '/image/icon-144x144.png',
+    '/image/icon-152x152.png',
+    '/image/icon-192x192.png',
+    '/image/icon-384x384.png',
+    '/image/icon-512x512.png'
 ];
 
 // Evento de instalación: Cacha los recursos estáticos
