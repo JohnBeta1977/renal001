@@ -1,1 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RenalCare PWA</title>
+    <!-- Configuración PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2196F3"> <!-- Color primario azul -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RenalCare">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png"> <!-- Icono para iOS -->
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        /* Estilos personalizados para la PWA */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Gris claro de fondo */
+            color: #333;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        /* Estilos para el spinner de carga */
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #2196F3; /* Azul primario */
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4 shadow-md">
+        <div class="container flex justify-between items-center">
+            <h1 class="text-2xl font-bold">RenalCare PWA</h1>
+            <nav>
+                <!-- Aquí irá la navegación futura -->
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow container py-8">
+        <section id="profile-section" class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-user-circle mr-3"></i> Perfil del Paciente
+            </h2>
+
+            <!-- Mensajes del sistema -->
+            <div id="system-message" class="hidden p-3 mb-4 rounded-md text-sm font-medium" role="alert"></div>
+
+            <!-- Spinner de carga -->
+            <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+                <div class="loading-spinner"></div>
+                <p class="ml-3 text-lg text-gray-700">Cargando...</p>
+            </div>
+
+            <form id="profile-form" class="space-y-6">
+                <!-- Información Básica -->
+                <div>
+                    <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Datos Personales</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                            <input type="text" id="name" name="name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Juan Pérez">
+                        </div>
+                        <div>
+                            <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento</label>
+                            <input type="date" id="dob" name="dob" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="dialysisType" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Diálisis</label>
+                            <select id="dialysisType" name="dialysisType" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <option value="">Seleccione</option>
+                                <option value="hemodialysis">Hemodiálisis</option>
+                                <option value="peritoneal">Diálisis Peritoneal</option>
+                                <option value="none">Ninguna</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="dialysisStartDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio de Diálisis (si aplica)</label>
+                            <input type="date" id="dialysisStartDate" name="dialysisStartDate" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="emergencyContact" class="block text-sm font-medium text-gray-700 mb-1">Contacto de Emergencia (Nombre y Teléfono)</label>
+                            <input type="text" id="emergencyContact" name="emergencyContact" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: María (555-1234)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metas y Restricciones -->
+                <div>
+                    <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200 flex items-center">
+                        <i class="fas fa-sliders-h mr-2"></i> Límites Nutricionales Diarios
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">Ingrese los límites diarios recomendados por su médico.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label for="liquidLimit" class="block text-sm font-medium text-gray-700 mb-1">Líquidos (ml)</label>
+                            <input type="number" id="liquidLimit" name="liquidLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 1500">
+                        </div>
+                        <div>
+                            <label for="potassiumLimit" class="block text-sm font-medium text-gray-700 mb-1">Potasio (mg)</label>
+                            <input type="number" id="potassiumLimit" name="potassiumLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 2000">
+                        </div>
+                        <div>
+                            <label for="phosphorusLimit" class="block text-sm font-medium text-gray-700 mb-1">Fósforo (mg)</label>
+                            <input type="number" id="phosphorusLimit" name="phosphorusLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 1000">
+                        </div>
+                        <div>
+                            <label for="sodiumLimit" class="block text-sm font-medium text-gray-700 mb-1">Sodio (mg)</label>
+                            <input type="number" id="sodiumLimit" name="sodiumLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 2300">
+                        </div>
+                        <div>
+                            <label for="proteinLimit" class="block text-sm font-medium text-gray-700 mb-1">Proteínas (g)</label>
+                            <input type="number" id="proteinLimit" name="proteinLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 60">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-save mr-2"></i> Guardar Perfil
+                    </button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 text-center text-sm">
+        <div class="container">
+            <p>&copy; 2025 RenalCare PWA. Todos los derechos reservados.</p>
+            <p id="user-id-display" class="mt-2 text-gray-400"></p>
+        </div>
+    </footer>
+
+    <!-- Script principal de la aplicación -->
+    <script src="/app.js"></script>
+</body>
+</html>
 
