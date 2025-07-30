@@ -1,26 +1,67 @@
 // app.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, where, onSnapshot, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
-// --- Variables Globales y Configuración de Firebase ---
-// Estas variables son proporcionadas por el entorno de Canvas.
-// Asegúrate de que estén disponibles en tu entorno de despliegue.
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+// --- Credenciales de Firebase ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCt-gYdvPvUId9Uv7_LlzMDRNozuQre6aU",
+    authDomain: "rnl01-8d925.firebaseapp.com",
+    projectId: "rnl01-8d925",
+    storageBucket: "rnl01-8d925.firebasestorage.app",
+    messagingSenderId: "176287262226",
+    appId: "1:176287262226:web:a3a62140b8a974a3031acb",
+    measurementId: "G-8F1ZZP1007"
+};
+
+// --- Variables Globales ---
+const appId = firebaseConfig.projectId; // Usamos el projectId como ID de la aplicación en Firestore
 
 let app;
 let db;
 let auth;
-let userId = null; // Para almacenar el UID del usuario autenticado o un ID anónimo
-let isAuthReady = false; // Bandera para indicar que la autenticación ha finalizado
+let analytics;
+let storage;
+let userId = null;
+let isAuthReady = false;
+let dailyLiquidLimit = 0; // Límite de líquidos del perfil del usuario
+let userName = "Paciente"; // Nombre del usuario para la pantalla de inicio
 
 // --- Referencias a elementos del DOM ---
+const mainHeader = document.getElementById('main-header');
+const profileSection = document.getElementById('profile-section');
+const liquidsSection = document.getElementById('liquids-section');
+const medsSection = document.getElementById('meds-section');
+const labsSection = document.getElementById('labs-section');
+const educationSection = document.getElementById('education-section');
+
 const profileForm = document.getElementById('profile-form');
 const systemMessage = document.getElementById('system-message');
 const loadingOverlay = document.getElementById('loading-overlay');
-const userIdDisplay = document.getElementById('user-id-display');
+const userIdDisplay = document.getElementById('user-id-display'); // Asegúrate de que este elemento exista si lo usas
+const profilePictureInput = document.getElementById('profilePicture');
+const profilePicturePreview = document.getElementById('profile-picture-preview');
+
+// Elementos de la sección de líquidos
+const dailyLimitDisplay = document.getElementById('daily-limit');
+const consumedTodayDisplay = document.getElementById('consumed-today');
+const remainingLiquidDisplay = document.getElementById('remaining-liquid');
+const liquidAmountInput = document.getElementById('liquid-amount-input');
+const addLiquidButton = document.getElementById('add-liquid-button');
+const liquidHistoryList = document.getElementById('liquid-history-list');
+const noLiquidEntriesMessage = document.getElementById('no-liquid-entries');
+const settingsButton = document.getElementById('settings-button');
+
+// Elementos de navegación inferior
+const navProfileButton = document.getElementById('nav-profile');
+const navLiquidsButton = document.getElementById('nav-liquids');
+const navMedsButton = document.getElementById('nav-meds');
+const navLabsButton = document.getElementById('nav-labs');
+const navEducationButton = document.getElementById('nav-education');
+
 
 // --- Funciones de Utilidad ---
 
@@ -57,33 +98,58 @@ function toggleLoading(show) {
     }
 }
 
+/**
+ * Cambia la sección visible de la aplicación.
+ * @param {string} sectionId - El ID de la sección a mostrar ('profile-section', 'liquids-section', etc.).
+ */
+function showSection(sectionId) {
+    console.log(`Attempting to show section: ${sectionId}`);
+    const sections = [profileSection, liquidsSection, medsSection, labsSection, educationSection];
+    sections.forEach(section => {
+        if (section.id === sectionId) {
+            section.classList.remove('hidden');
+            console.log(`Section ${sectionId} is now visible.`);
+        } else {
+            section.classList.add('hidden');
+        }
+    });
+
+    // Actualizar el estado activo de los botones de navegación
+    const navButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navEducationButton];
+    navButtons.forEach(button => {
+        if (button.id === `nav-${sectionId.replace('-section', '')}`) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+}
+
 // --- Inicialización de Firebase ---
 async function initializeFirebase() {
+    console.log('Initializing Firebase...');
     try {
         toggleLoading(true);
         app = initializeApp(firebaseConfig);
+        analytics = getAnalytics(app);
         db = getFirestore(app);
         auth = getAuth(app);
+        storage = getStorage(app);
 
-        // Escuchar cambios en el estado de autenticación
         onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed. User:', user ? user.uid : 'none');
             if (user) {
                 userId = user.uid;
-                userIdDisplay.textContent = `ID de Usuario: ${userId}`;
+                // userIdDisplay.textContent = `ID de Usuario: ${userId}`; // Comentado si no existe el elemento HTML
                 console.log('Usuario autenticado:', userId);
                 isAuthReady = true;
-                await loadUserProfile(); // Cargar el perfil una vez autenticado
+                await loadUserProfile(); // Cargar el perfil, pero no redirigir automáticamente
+                setupLiquidTrackerListener(); // Configurar el listener de líquidos
             } else {
-                // Si no hay usuario, intentar iniciar sesión de forma anónima
                 console.log('No hay usuario autenticado, intentando inicio de sesión anónimo...');
                 try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                        console.log('Inicio de sesión con token personalizado exitoso.');
-                    } else {
-                        await signInAnonymously(auth);
-                        console.log('Inicio de sesión anónimo exitoso.');
-                    }
+                    await signInAnonymously(auth);
+                    console.log('Inicio de sesión anónimo exitoso.');
                 } catch (error) {
                     console.error('Error al iniciar sesión en Firebase:', error);
                     showSystemMessage('Error al iniciar sesión. Intenta recargar la página.', 'error');
@@ -96,6 +162,33 @@ async function initializeFirebase() {
         console.error("Error al inicializar Firebase:", error);
         showSystemMessage('Error al inicializar la aplicación. Por favor, revisa la consola.', 'error');
         toggleLoading(false);
+    }
+}
+
+// --- Funciones de Firebase Storage ---
+
+/**
+ * Sube la foto de perfil del usuario a Firebase Storage.
+ * @param {File} file - El archivo de imagen a subir.
+ * @returns {Promise<string|null>} La URL de descarga de la imagen o null si hay un error.
+ */
+async function uploadProfilePicture(file) {
+    if (!storage || !userId) {
+        console.error("Firebase Storage o userId no disponibles para la subida.");
+        showSystemMessage('Error: No se pudo subir la imagen. Firebase Storage no está listo.', 'error');
+        return null;
+    }
+
+    const storageRef = ref(storage, `images/profile_pictures/${userId}/${file.name}`);
+    try {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('Imagen subida exitosamente:', downloadURL);
+        return downloadURL;
+    } catch (error) {
+        console.error("Error al subir la imagen de perfil:", error);
+        showSystemMessage('Error al subir la foto de perfil. Intenta de nuevo.', 'error');
+        return null;
     }
 }
 
@@ -112,28 +205,47 @@ async function loadUserProfile() {
 
     toggleLoading(true);
     try {
-        // Ruta para datos privados del usuario
         const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
         const docSnap = await getDoc(userProfileDocRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data();
             console.log("Perfil cargado:", data);
-            // Rellenar el formulario con los datos cargados
+
             document.getElementById('name').value = data.name || '';
-            document.getElementById('dob').value = data.dob || '';
+            document.getElementById('bloodType').value = data.bloodType || '';
+            document.getElementById('ipsName').value = data.ipsName || '';
+            document.getElementById('dialysisClinicName').value = data.dialysisClinicName || '';
+            document.getElementById('clinicPhone').value = data.clinicPhone || '';
             document.getElementById('dialysisType').value = data.dialysisType || '';
-            document.getElementById('dialysisStartDate').value = data.dialysisStartDate || '';
-            document.getElementById('emergencyContact').value = data.emergencyContact || '';
-            document.getElementById('liquidLimit').value = data.liquidLimit || '';
-            document.getElementById('potassiumLimit').value = data.potassiumLimit || '';
-            document.getElementById('phosphorusLimit').value = data.phosphorusLimit || '';
-            document.getElementById('sodiumLimit').value = data.sodiumLimit || '';
-            document.getElementById('proteinLimit').value = data.proteinLimit || '';
+            document.getElementById('hemodialysisTime').value = data.hemodialysisTime || '';
+
+            const hemodialysisDaysCheckboxes = document.querySelectorAll('input[name="hemodialysisDays"]');
+            hemodialysisDaysCheckboxes.forEach(checkbox => {
+                checkbox.checked = data.hemodialysisDays && data.hemodialysisDays.includes(checkbox.value);
+            });
+
+            document.getElementById('emergencyContactName').value = data.emergencyContactName || '';
+            document.getElementById('emergencyContactPhone').value = data.emergencyContactPhone || '';
+            
+            if (data.profilePictureUrl) {
+                profilePicturePreview.src = data.profilePictureUrl;
+            } else {
+                profilePicturePreview.src = "https://placehold.co/80x80/cccccc/333333?text=Foto";
+            }
+
+            dailyLiquidLimit = data.liquidLimit || 2000;
+            dailyLimitDisplay.textContent = `${dailyLiquidLimit} ml`;
+            userName = data.name || "Paciente";
+
             showSystemMessage('Perfil cargado exitosamente.', 'success');
+            // NO redirigir automáticamente aquí. La sección de perfil ya es visible por defecto.
         } else {
             console.log("No se encontró un perfil existente para este usuario.");
             showSystemMessage('Bienvenido/a. Por favor, completa tu perfil.', 'info');
+            dailyLiquidLimit = 2000;
+            dailyLimitDisplay.textContent = `${dailyLiquidLimit} ml`;
+            // NO redirigir automáticamente aquí. La sección de perfil ya es visible por defecto.
         }
     } catch (e) {
         console.error("Error al cargar el perfil del paciente:", e);
@@ -148,7 +260,7 @@ async function loadUserProfile() {
  * @param {Event} event - El evento de envío del formulario.
  */
 async function saveUserProfile(event) {
-    event.preventDefault(); // Prevenir el envío por defecto del formulario
+    event.preventDefault();
 
     if (!db || !userId || !isAuthReady) {
         showSystemMessage('La aplicación no está lista. Por favor, espera o recarga la página.', 'error');
@@ -159,17 +271,45 @@ async function saveUserProfile(event) {
     try {
         const formData = new FormData(profileForm);
         const profileData = {};
+        let profilePictureUrl = profilePicturePreview.src;
+
         for (let [key, value] of formData.entries()) {
-            // Convertir valores numéricos a número si es posible
-            profileData[key] = (key.includes('Limit') && value !== '') ? parseFloat(value) : value;
+            if (key === 'hemodialysisDays') {
+                if (!profileData.hemodialysisDays) {
+                    profileData.hemodialysisDays = [];
+                }
+                profileData.hemodialysisDays.push(value);
+            } else if (key !== 'profilePicture') {
+                profileData[key] = value;
+            }
         }
 
-        // Ruta para datos privados del usuario
+        const profilePictureFile = profilePictureInput.files[0];
+        if (profilePictureFile) {
+            showSystemMessage('Subiendo foto de perfil...', 'info');
+            const uploadedUrl = await uploadProfilePicture(profilePictureFile);
+            if (uploadedUrl) {
+                profilePictureUrl = uploadedUrl;
+                profilePicturePreview.src = uploadedUrl;
+            } else {
+                showSystemMessage('Fallo al subir la foto de perfil. Se guardará el perfil sin la nueva imagen.', 'error');
+            }
+        }
+        
+        profileData.profilePictureUrl = profilePictureUrl;
+        profileData.liquidLimit = dailyLiquidLimit;
+
         const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
-        await setDoc(userProfileDocRef, profileData, { merge: true }); // Usar merge para actualizar campos existentes sin sobrescribir todo
+        await setDoc(userProfileDocRef, profileData, { merge: true });
 
         console.log("Perfil guardado exitosamente:", profileData);
         showSystemMessage('¡Perfil guardado exitosamente!', 'success');
+
+        userName = profileData.name || "Paciente";
+
+        // NO redirigir automáticamente aquí. El usuario puede navegar libremente.
+        // showSection('liquids-section'); 
+
     } catch (e) {
         console.error("Error al guardar el perfil del paciente:", e);
         showSystemMessage('Error al guardar el perfil. Por favor, intenta de nuevo.', 'error');
@@ -177,6 +317,192 @@ async function saveUserProfile(event) {
         toggleLoading(false);
     }
 }
+
+// --- Funciones de Seguimiento de Líquidos ---
+
+/**
+ * Obtiene la fecha actual en formato YYYY-MM-DD.
+ * @returns {string} Fecha actual.
+ */
+function getTodayDateString() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Configura el listener en tiempo real para la ingesta de líquidos de hoy.
+ */
+function setupLiquidTrackerListener() {
+    if (!db || !userId || !isAuthReady) {
+        console.log('Firestore o userId no disponibles para el listener de líquidos.');
+        return;
+    }
+
+    const todayDate = getTodayDateString();
+    const liquidCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailyLiquidIntake`);
+    
+    const q = query(
+        liquidCollectionRef,
+        where("date", "==", todayDate)
+        // orderBy("timestamp", "asc") // Requiere índice compuesto si se usa con where en otro campo
+    );
+
+    onSnapshot(q, (snapshot) => {
+        let totalConsumed = 0;
+        liquidHistoryList.innerHTML = '';
+        const entries = [];
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            totalConsumed += data.amount;
+            entries.push({ id: doc.id, ...data });
+        });
+
+        entries.sort((a, b) => {
+            const timeA = a.timestamp ? a.timestamp.toDate() : new Date(0);
+            const timeB = b.timestamp ? b.timestamp.toDate() : new Date(0);
+            return timeA - timeB;
+        });
+
+
+        if (entries.length === 0) {
+            noLiquidEntriesMessage.classList.remove('hidden');
+        } else {
+            noLiquidEntriesMessage.classList.add('hidden');
+            entries.forEach(entry => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-50 p-3 rounded-md shadow-sm';
+                const time = entry.timestamp ? new Date(entry.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                li.innerHTML = `
+                    <span>${entry.amount} ml - ${time}</span>
+                    <button data-id="${entry.id}" class="delete-liquid-entry text-red-500 hover:text-red-700 focus:outline-none">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                liquidHistoryList.appendChild(li);
+            });
+            document.querySelectorAll('.delete-liquid-entry').forEach(button => {
+                button.addEventListener('click', deleteLiquidEntry);
+            });
+        }
+
+        consumedTodayDisplay.textContent = totalConsumed;
+        const remaining = dailyLiquidLimit - totalConsumed;
+        remainingLiquidDisplay.textContent = remaining;
+
+        if (remaining < 0) {
+            remainingLiquidDisplay.classList.remove('text-blue-600');
+            remainingLiquidDisplay.classList.add('text-red-600');
+        } else {
+            remainingLiquidDisplay.classList.remove('text-red-600');
+            remainingLiquidDisplay.classList.add('text-blue-600');
+        }
+
+    }, (error) => {
+        console.error("Error al obtener datos de líquidos en tiempo real:", error);
+        showSystemMessage('Error al cargar el historial de líquidos.', 'error');
+    });
+}
+
+/**
+ * Añade una nueva entrada de líquido.
+ */
+async function addLiquidEntry() {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para añadir líquidos.', 'error');
+        return;
+    }
+
+    const amount = parseFloat(liquidAmountInput.value);
+    if (isNaN(amount) || amount <= 0) {
+        showSystemMessage('Por favor, ingresa una cantidad válida de líquido (mayor que 0).', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const liquidCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailyLiquidIntake`);
+        await addDoc(liquidCollectionRef, {
+            amount: amount,
+            date: getTodayDateString(),
+            timestamp: serverTimestamp()
+        });
+        liquidAmountInput.value = '';
+        showSystemMessage('Líquido registrado exitosamente.', 'success');
+    } catch (e) {
+        console.error("Error al añadir entrada de líquido:", e);
+        showSystemMessage('Error al registrar el líquido. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+/**
+ * Elimina una entrada de líquido.
+ * @param {Event} event - El evento de click del botón de eliminar.
+ */
+async function deleteLiquidEntry(event) {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para eliminar líquidos.', 'error');
+        return;
+    }
+
+    const entryId = event.currentTarget.dataset.id;
+    if (!entryId) {
+        console.error("ID de entrada de líquido no encontrado.");
+        showSystemMessage('Error: No se pudo identificar el registro a eliminar.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const docRef = doc(db, `artifacts/${appId}/users/${userId}/dailyLiquidIntake`, entryId);
+        await deleteDoc(docRef);
+        showSystemMessage('Registro de líquido eliminado.', 'success');
+    } catch (e) {
+        console.error("Error al eliminar entrada de líquido:", e);
+        showSystemMessage('Error al eliminar el registro. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+
+// --- Lógica de previsualización de imagen de perfil ---
+profilePictureInput.addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profilePicturePreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        profilePicturePreview.src = "https://placehold.co/80x80/cccccc/333333?text=Foto";
+    }
+});
+
+// --- Lógica de encogimiento del header al hacer scroll ---
+window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    const header = mainHeader;
+    const initialHeight = 48; // 3rem en px (16px * 3 = 48px)
+    const targetHeight = initialHeight * 0.50; // 50% de la altura inicial
+
+    if (scrollY > 50) { // Umbral de scroll para activar el encogimiento
+        header.classList.add('header-shrink');
+        // Ajustar el padding-top del main para compensar el header encogido
+        document.querySelector('main').style.paddingTop = `${targetHeight + 16}px`; // +1rem de padding base
+    } else {
+        header.classList.remove('header-shrink');
+        // Restaurar el padding-top original del main
+        document.querySelector('main').style.paddingTop = `${initialHeight + 16}px`;
+    }
+});
+
 
 // --- Registro del Service Worker ---
 if ('serviceWorker' in navigator) {
@@ -192,5 +518,14 @@ if ('serviceWorker' in navigator) {
 }
 
 // --- Event Listeners ---
-window.addEventListener('load', initializeFirebase); // Inicializar Firebase cuando la página cargue
-profileForm.addEventListener('submit', saveUserProfile); // Escuchar el envío del formulario de perfil
+window.addEventListener('load', initializeFirebase);
+profileForm.addEventListener('submit', saveUserProfile);
+addLiquidButton.addEventListener('click', addLiquidEntry);
+settingsButton.addEventListener('click', () => showSystemMessage('Funcionalidad de ajustes de líquidos (cambiar límite) se implementará aquí.', 'info'));
+
+// Navegación inferior
+navProfileButton.addEventListener('click', () => showSection('profile-section'));
+navLiquidsButton.addEventListener('click', () => showSection('liquids-section'));
+navMedsButton.addEventListener('click', () => showSection('meds-section'));
+navLabsButton.addEventListener('click', () => showSection('labs-section'));
+navEducationButton.addEventListener('click', () => showSection('education-section'));
