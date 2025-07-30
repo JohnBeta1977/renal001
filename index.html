@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RenalCare- Tu Compañero de Salud</title>
+    <title>RenalCare PWA - Tu Compañero de Salud Renal</title>
 
     <!-- Metas SEO y Compartir -->
     <meta name="description" content="RenalCare PWA: Aplicación integral para el seguimiento de pacientes renales, hipertensos y con autismo leve. Registra líquidos, medicamentos, síntomas y más.">
@@ -30,8 +30,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RenalCare">
-    <link rel="apple-touch-icon" href="/images/icons/icon-192x192.png"> <!-- Icono para iOS, asumiendo que los iconos generados están en images/icons -->
-    <link rel="icon" type="image/png" href="/images/icons/icon-192x192.png"> <!-- Favicon general -->
+    <!-- Iconos PWA y Favicon ahora directamente en /images/ -->
+    <link rel="apple-touch-icon" href="/images/icon-192x192.png">
+    <link rel="icon" type="image/png" href="/images/icon-192x192.png">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,20 +69,87 @@
         }
 
         /* Estilos para el header que se encoge */
+        #main-header {
+            height: 3rem; /* Altura inicial del header: Aún más pequeña */
+            position: fixed; /* Siempre visible */
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Centrar contenido */
+            transition: all 0.3s ease-in-out; /* Transición suave */
+        }
         .header-shrink {
-            height: 40%; /* Reducir al 40% del tamaño original */
-            opacity: 0.6; /* Transparencia del 60% */
-            padding: 0.5rem 1rem; /* Ajustar padding */
+            height: calc(3rem * 0.50); /* Se reduce al 50% */
+            opacity: 0.50; /* Transparencia del 50% */
+            padding-top: 0.25rem; /* Ajustar padding para que el logo no se salga */
+            padding-bottom: 0.25rem;
+        }
+        #main-header .logo {
+            height: 2rem; /* Altura inicial del logo, proporcional */
+            transition: all 0.3s ease-in-out; /* Transición suave */
         }
         .header-shrink .logo {
-            max-height: 40px; /* Tamaño reducido del logo */
+            height: calc(2rem * 0.50); /* 50% del tamaño inicial del logo */
+        }
+
+        /* Espacio para el header fijo */
+        body {
+            padding-top: 3rem; /* Espacio para el header inicial */
+        }
+        /* Esta regla se aplicará dinámicamente en app.js para mayor control */
+        /* .header-shrink + main {
+            padding-top: calc(3rem * 0.50 + 1rem);
+        } */
+
+
+        /* Estilos para la barra de navegación inferior */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            height: 3.5rem; /* Altura más delgada para el footer */
+            display: flex; /* Asegurar flexbox para los items */
+            justify-content: space-around; /* Distribuir uniformemente */
+            align-items: center; /* Centrar verticalmente */
+        }
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem; /* Padding más pequeño para hacerla más delgada */
+            color: #6b7280; /* gray-500 */
+            transition: color 0.2s ease-in-out;
+            flex-grow: 1; /* Para que ocupen el espacio disponible */
+            height: 100%; /* Ocupar toda la altura del footer */
+        }
+        .bottom-nav-item.active {
+            color: #2563eb; /* blue-600 */
+        }
+        .bottom-nav-item:hover {
+            color: #1d4ed8; /* blue-700 */
+        }
+        .bottom-nav-item i {
+            font-size: 1.25rem; /* Tamaño del icono */
+            margin-bottom: 0.1rem; /* Pequeño espacio entre icono y texto */
+        }
+        .bottom-nav-item span {
+            font-size: 0.65rem; /* Tamaño del texto más pequeño */
+            line-height: 1;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
     <header id="main-header" class="bg-blue-600 text-white p-4 shadow-md transition-all duration-300 ease-in-out">
-        <div class="container flex justify-between items-center">
-            <img src="/images/logo.png" alt="RenalCare Logo" class="h-12 logo transition-all duration-300 ease-in-out">
+        <div class="container flex justify-between items-center h-full">
+            <img src="/images/logo.png" alt="RenalCare Logo" class="logo transition-all duration-300 ease-in-out">
             <nav>
                 <!-- Aquí irá la navegación futura -->
             </nav>
@@ -89,20 +157,20 @@
     </header>
 
     <main class="flex-grow container py-8">
+        <!-- Mensajes del sistema (global) -->
+        <div id="system-message" class="hidden p-3 mb-4 rounded-md text-sm font-medium" role="alert"></div>
+
+        <!-- Spinner de carga (global) -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="loading-spinner"></div>
+            <p class="ml-3 text-lg text-gray-700">Cargando...</p>
+        </div>
+
+        <!-- Sección de Perfil del Paciente -->
         <section id="profile-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90">
             <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
                 <i class="fas fa-user-circle mr-3"></i> Perfil del Paciente
             </h2>
-
-            <!-- Mensajes del sistema -->
-            <div id="system-message" class="hidden p-3 mb-4 rounded-md text-sm font-medium" role="alert"></div>
-
-            <!-- Spinner de carga -->
-            <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
-                <div class="loading-spinner"></div>
-                <p class="ml-3 text-lg text-gray-700">Cargando...</p>
-            </div>
-
             <form id="profile-form" class="space-y-6">
                 <!-- Información Básica -->
                 <div>
@@ -214,12 +282,248 @@
                 </div>
             </form>
         </section>
+
+        <!-- Sección de Seguimiento de Líquidos -->
+        <section id="liquids-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-tint mr-3"></i> Seguimiento de Líquidos
+                <button id="settings-button" class="ml-auto text-gray-400 hover:text-blue-600 focus:outline-none">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+            </h2>
+
+            <div class="bg-blue-50 p-4 rounded-lg text-center mb-6">
+                <p class="text-sm text-gray-600">Límite Diario: <span id="daily-limit" class="font-semibold text-blue-700">-- ml</span></p>
+                <p class="text-2xl font-bold text-blue-800 my-2"><span id="consumed-today">0</span> mL</p>
+                <p class="text-gray-600">Consumido hoy</p>
+                <p class="text-lg font-semibold text-blue-600 mt-2">Restante: <span id="remaining-liquid">--</span> mL</p>
+            </div>
+
+            <div class="mb-6 flex items-center space-x-2">
+                <input type="number" id="liquid-amount-input" class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Cantidad (ml)">
+                <button id="add-liquid-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Añadir Líquido
+                </button>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Hoy:</h3>
+                <ul id="liquid-history-list" class="space-y-3">
+                    <!-- Los elementos del historial se insertarán aquí dinámicamente -->
+                    <li class="text-gray-500 text-center" id="no-liquid-entries">No hay registros de líquidos para hoy.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección de Medicamentos -->
+        <section id="meds-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-pills mr-3"></i> Medicamentos
+            </h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Añadir Nuevo Medicamento</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="new-med-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Medicamento</label>
+                        <input type="text" id="new-med-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Losartán">
+                    </div>
+                    <div>
+                        <label for="new-med-dose" class="block text-sm font-medium text-gray-700 mb-1">Dosis</label>
+                        <input type="text" id="new-med-dose" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 50mg, 1 pastilla">
+                    </div>
+                    <div>
+                        <label for="new-med-frequency" class="block text-sm font-medium text-gray-700 mb-1">Frecuencia</label>
+                        <select id="new-med-frequency" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Seleccione</option>
+                            <option value="daily">Diario</option>
+                            <option value="twice-daily">Dos veces al día</option>
+                            <option value="three-times-daily">Tres veces al día</option>
+                            <option value="weekly">Semanal</option>
+                            <option value="as-needed">Según necesidad</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new-med-time" class="block text-sm font-medium text-gray-700 mb-1">Hora (si aplica)</label>
+                        <input type="time" id="new-med-time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-new-med-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Medicamento
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Mis Medicamentos Registrados:</h3>
+                <ul id="meds-list" class="space-y-3">
+                    <!-- Ejemplo de medicamento (se generarán dinámicamente) -->
+                    <li class="bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Losartán 50mg</p>
+                            <p class="text-sm text-gray-600">Frecuencia: Diario - Hora: 08:00 AM</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded-md text-sm">Tomado</button>
+                            <button class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                        </div>
+                    </li>
+                    <li class="text-gray-500 text-center" id="no-meds-entries">No hay medicamentos registrados.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección de Citas/Laboratorios -->
+        <section id="labs-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-flask mr-3"></i> Citas / Laboratorios
+            </h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Añadir Nueva Cita</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="new-appointment-name" class="block text-sm font-medium text-gray-700 mb-1">Motivo de la Cita</label>
+                        <input type="text" id="new-appointment-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Consulta con Nefrólogo">
+                    </div>
+                    <div>
+                        <label for="new-appointment-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                        <input type="date" id="new-appointment-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="new-appointment-time" class="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                        <input type="time" id="new-appointment-time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="new-appointment-place" class="block text-sm font-medium text-gray-700 mb-1">Lugar</label>
+                        <input type="text" id="new-appointment-place" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Clínica Renal del Valle">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-new-appointment-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Cita
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Próximas Citas:</h3>
+                <ul id="appointments-list" class="space-y-3">
+                    <!-- Ejemplo de cita (se generarán dinámicamente) -->
+                    <li class="bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Consulta con Nefrólogo</p>
+                            <p class="text-sm text-gray-600">Fecha: 2025-08-15 - Hora: 10:00 AM - Lugar: Clínica XYZ</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                        </div>
+                    </li>
+                    <li class="text-gray-500 text-center" id="no-appointments-entries">No hay citas registradas.</li>
+                </ul>
+            </div>
+
+            <div class="mt-8 mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Añadir Nuevo Resultado de Laboratorio</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="new-lab-test-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Examen</label>
+                        <input type="text" id="new-lab-test-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Creatinina">
+                    </div>
+                    <div>
+                        <label for="new-lab-result-value" class="block text-sm font-medium text-gray-700 mb-1">Resultado</label>
+                        <input type="text" id="new-lab-result-value" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 1.8 mg/dL">
+                    </div>
+                    <div>
+                        <label for="new-lab-result-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha del Examen</label>
+                        <input type="date" id="new-lab-result-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-new-lab-result-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Resultado
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Laboratorios:</h3>
+                <ul id="lab-results-list" class="space-y-3">
+                    <!-- Ejemplo de resultado de laboratorio (se generarán dinámicamente) -->
+                    <li class="bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800">Creatinina: 1.8 mg/dL</p>
+                            <p class="text-sm text-gray-600">Fecha: 2025-07-20</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                        </div>
+                    </li>
+                    <li class="text-gray-500 text-center" id="no-lab-results-entries">No hay resultados de laboratorio registrados.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección de Educación -->
+        <section id="education-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-book-open mr-3"></i> Educación y Recursos
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-blue-700 mb-2 flex items-center"><i class="fas fa-utensils mr-2"></i> Dieta Renal</h3>
+                    <p class="text-gray-700 text-sm">Aprende sobre alimentos bajos en potasio, fósforo y sodio, y cómo manejar tu ingesta de líquidos.</p>
+                    <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md text-sm">Ver Recursos</button>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-green-700 mb-2 flex items-center"><i class="fas fa-running mr-2"></i> Ejercicio y Actividad Física</h3>
+                    <p class="text-gray-700 text-sm">Consejos y rutinas seguras para mantenerte activo y mejorar tu bienestar general.</p>
+                    <button class="mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md text-sm">Ver Recursos</button>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-purple-700 mb-2 flex items-center"><i class="fas fa-heartbeat mr-2"></i> Manejo de la Hipertensión</h3>
+                    <p class="text-gray-700 text-sm">Información clave sobre cómo controlar la presión arterial y reducir riesgos cardiovasculares.</p>
+                    <button class="mt-3 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-md text-sm">Ver Recursos</button>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-yellow-700 mb-2 flex items-center"><i class="fas fa-brain mr-2"></i> Apoyo para Autismo Leve</h3>
+                    <p class="text-gray-700 text-sm">Estrategias de comunicación, rutinas y recursos para el día a día de personas con autismo leve.</p>
+                    <button class="mt-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-md text-sm">Ver Recursos</button>
+                </div>
+                 <div class="bg-indigo-50 p-4 rounded-lg shadow-sm md:col-span-2">
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2 flex items-center"><i class="fas fa-question-circle mr-2"></i> Preguntas Frecuentes sobre Diálisis</h3>
+                    <p class="text-gray-700 text-sm">Respuestas a las dudas más comunes sobre hemodiálisis y diálisis peritoneal.</p>
+                    <button class="mt-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-md text-sm">Ver FAQ</button>
+                </div>
+            </div>
+        </section>
+
     </main>
 
-    <footer class="bg-gray-800 text-white p-4 text-center text-sm">
-        <div class="container">
-            <p>&copy; 2025 RenalCare PWA. Todos los derechos reservados.</p>
-            <p id="user-id-display" class="mt-2 text-gray-400"></p>
+    <footer class="bottom-nav">
+        <div class="container flex justify-around items-center h-full">
+            <button id="nav-profile" class="bottom-nav-item active">
+                <i class="fas fa-user text-xl"></i>
+                <span class="text-xs mt-1">Perfil</span>
+            </button>
+            <button id="nav-liquids" class="bottom-nav-item">
+                <i class="fas fa-tint text-xl"></i>
+                <span class="text-xs mt-1">Líquidos</span>
+            </button>
+            <button id="nav-meds" class="bottom-nav-item">
+                <i class="fas fa-pills text-xl"></i>
+                <span class="text-xs mt-1">Medicamentos</span>
+            </button>
+            <button id="nav-labs" class="bottom-nav-item">
+                <i class="fas fa-flask text-xl"></i>
+                <span class="text-xs mt-1">Citas/Labs</span>
+            </button>
+            <button id="nav-education" class="bottom-nav-item">
+                <i class="fas fa-book-open text-xl"></i>
+                <span class="text-xs mt-1">Educación</span>
+            </button>
         </div>
     </footer>
 
