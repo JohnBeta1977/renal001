@@ -15,14 +15,14 @@
     <meta property="og:url" content="https://johnbeta1977.github.io/renal001/">
     <meta property="og:title" content="RenalCare PWA - Tu Compañero de Salud Renal">
     <meta property="og:description" content="RenalCare PWA: Aplicación integral para el seguimiento de pacientes renales, hipertensos y con autismo leve. Registra líquidos, medicamentos, síntomas y más.">
-    <meta property="og:image" content="https://johnbeta1977.github.io/renal001/images/logo.png">
+    <meta property="og:image" content="https://johnbeta1977.github.io/renal001/image/logo.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://johnbeta1977.github.io/renal001/">
     <meta property="twitter:title" content="RenalCare PWA - Tu Compañero de Salud Renal">
     <meta property="twitter:description" content="RenalCare PWA: Aplicación integral para el seguimiento de pacientes renales, hipertensos y con autismo leve. Registra líquidos, medicamentos, síntomas y más.">
-    <meta property="twitter:image" content="https://johnbeta1977.github.io/renal001/images/logo.png">
+    <meta property="twitter:image" content="https://johnbeta1977.github.io/renal001/image/logo.png">
 
     <!-- Configuración PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -30,9 +30,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RenalCare">
-    <!-- Iconos PWA y Favicon ahora directamente en /images/ -->
-    <link rel="apple-touch-icon" href="/images/icon-192x192.png">
-    <link rel="icon" type="image/png" href="/images/icon-192x192.png">
+    <!-- Iconos PWA y Favicon ahora directamente en /image/ -->
+    <link rel="apple-touch-icon" href="/image/icon-192x192.png">
+    <link rel="icon" type="image/png" href="/image/icon-192x192.png">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,7 +45,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8; /* Gris claro de fondo */
             color: #333;
-            background-image: url('/images/bg.jpg'); /* Imagen de fondo */
+            background-image: url('/image/bg.jpg'); /* Imagen de fondo */
             background-size: cover;
             background-attachment: fixed;
             background-position: center;
@@ -149,7 +149,7 @@
 <body class="min-h-screen flex flex-col">
     <header id="main-header" class="bg-blue-600 text-white p-4 shadow-md transition-all duration-300 ease-in-out">
         <div class="container flex justify-between items-center h-full">
-            <img src="/images/logo.png" alt="RenalCare Logo" class="logo transition-all duration-300 ease-in-out">
+            <img src="/image/logo.png" alt="RenalCare Logo" class="logo transition-all duration-300 ease-in-out">
             <nav>
                 <!-- Aquí irá la navegación futura -->
             </nav>
@@ -167,7 +167,7 @@
         </div>
 
         <!-- Sección de Perfil del Paciente -->
-        <section id="profile-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90">
+        <section id="profile-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
             <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
                 <i class="fas fa-user-circle mr-3"></i> Perfil del Paciente
             </h2>
@@ -342,9 +342,11 @@
                             <option value="as-needed">Según necesidad</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="new-med-time" class="block text-sm font-medium text-gray-700 mb-1">Hora (si aplica)</label>
-                        <input type="time" id="new-med-time" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <!-- Contenedor para las horas dinámicas -->
+                    <div id="med-times-container">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Hora(s)</label>
+                        <!-- Un campo de hora inicial, si es necesario, o se generará dinámicamente -->
+                        <input type="time" name="medTime" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     </div>
                 </div>
                 <div class="flex justify-end mt-4">
@@ -500,11 +502,244 @@
             </div>
         </section>
 
+        <!-- Sección: Agenda / Contactos Importantes -->
+        <section id="agenda-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-address-book mr-3"></i> Agenda / Contactos Importantes
+            </h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Añadir Nuevo Contacto</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="new-contact-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                        <input type="text" id="new-contact-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Dr. Juan Pérez">
+                    </div>
+                    <div>
+                        <label for="new-contact-phone" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                        <input type="tel" id="new-contact-phone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: +57 310 1234567">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="new-contact-profession" class="block text-sm font-medium text-gray-700 mb-1">Cargo / Profesión</label>
+                        <input type="text" id="new-contact-profession" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Nefrólogo, Enfermera, Familiar">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-new-contact-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Contacto
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Mis Contactos:</h3>
+                <ul id="contacts-list" class="space-y-3">
+                    <!-- Los elementos de contacto se insertarán aquí dinámicamente -->
+                    <li class="text-gray-500 text-center" id="no-contacts-entries">No hay contactos registrados.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección: Cardiología (Hipertensión) -->
+        <section id="cardiology-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-heartbeat mr-3"></i> Cardiología (Hipertensión)
+            </h2>
+
+            <!-- Registro de Presión Arterial -->
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Registro de Presión Arterial</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="bp-systolic" class="block text-sm font-medium text-gray-700 mb-1">Sistólica (mmHg)</label>
+                        <input type="number" id="bp-systolic" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 120">
+                    </div>
+                    <div>
+                        <label for="bp-diastolic" class="block text-sm font-medium text-gray-700 mb-1">Diastólica (mmHg)</label>
+                        <input type="number" id="bp-diastolic" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 80">
+                    </div>
+                    <div>
+                        <label for="heart-rate" class="block text-sm font-medium text-gray-700 mb-1">Frecuencia Cardíaca (bpm)</label>
+                        <input type="number" id="heart-rate" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 75">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-bp-reading-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Lectura
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Presión Arterial:</h3>
+                <ul id="bp-history-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-bp-entries">No hay registros de presión arterial.</li>
+                </ul>
+            </div>
+
+            <!-- Registro de Síntomas Cardiovasculares -->
+            <div class="mt-8 mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Registro de Síntomas Cardiovasculares</h3>
+                <div>
+                    <label for="cardiac-symptom" class="block text-sm font-medium text-gray-700 mb-1">Síntoma</label>
+                    <input type="text" id="cardiac-symptom" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Dolor de pecho, Mareo">
+                </div>
+                <div class="mt-4">
+                    <label for="symptom-intensity" class="block text-sm font-medium text-gray-700 mb-1">Intensidad</label>
+                    <select id="symptom-intensity" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <option value="">Seleccione</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="severo">Severo</option>
+                    </select>
+                </div>
+                <div class="mt-4">
+                    <label for="symptom-duration" class="block text-sm font-medium text-gray-700 mb-1">Duración (minutos)</label>
+                    <input type="number" id="symptom-duration" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 10">
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-cardiac-symptom-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Síntoma
+                    </button>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Síntomas:</h3>
+                <ul id="cardiac-symptom-history-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-cardiac-symptoms">No hay registros de síntomas cardiovasculares.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección: Autismo Leve -->
+        <section id="autism-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-brain mr-3"></i> Autismo Leve
+            </h2>
+
+            <!-- Rutinas Diarias Visuales -->
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Rutinas Diarias Visuales</h3>
+                <div>
+                    <label for="routine-task-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Tarea</label>
+                    <input type="text" id="routine-task-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Desayuno, Cepillarse los dientes">
+                </div>
+                <div class="mt-4">
+                    <label for="routine-task-icon" class="block text-sm font-medium text-gray-700 mb-1">Ícono (ej: fas fa-utensils)</label>
+                    <input type="text" id="routine-task-icon" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Clase de Font Awesome, ej: fas fa-utensils">
+                    <p class="text-xs text-gray-500 mt-1">Busca íconos en <a href="https://fontawesome.com/icons" target="_blank" class="text-blue-500 hover:underline">Font Awesome</a></p>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-routine-task-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Tarea
+                    </button>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Mis Rutinas:</h3>
+                <ul id="routine-tasks-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-routine-tasks">No hay tareas de rutina registradas.</li>
+                </ul>
+            </div>
+
+            <!-- Registro de Comportamientos/Emociones -->
+            <div class="mt-8 mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Registro de Comportamientos / Emociones</h3>
+                <div>
+                    <label for="behavior-emotion" class="block text-sm font-medium text-gray-700 mb-1">Comportamiento / Emoción</label>
+                    <input type="text" id="behavior-emotion" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Ansiedad, Calma, Frustración">
+                </div>
+                <div class="mt-4">
+                    <label for="behavior-notes" class="block text-sm font-medium text-gray-700 mb-1">Notas (desencadenantes, manejo)</label>
+                    <textarea id="behavior-notes" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Ruido fuerte, música relajante"></textarea>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-behavior-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Registro
+                    </button>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Comportamientos:</h3>
+                <ul id="behavior-history-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-behavior-entries">No hay registros de comportamientos/emociones.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Sección: Bienestar General -->
+        <section id="wellness-section" class="bg-white p-6 rounded-lg shadow-lg bg-opacity-90 hidden">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6 flex items-center">
+                <i class="fas fa-leaf mr-3"></i> Bienestar General
+            </h2>
+
+            <!-- Registro de Peso y Glucosa -->
+            <div class="mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Registro de Peso y Glucosa</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="weight-input" class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                        <input type="number" id="weight-input" step="0.1" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 70.5">
+                    </div>
+                    <div>
+                        <label for="glucose-input" class="block text-sm font-medium text-gray-700 mb-1">Glucosa (mg/dL)</label>
+                        <input type="number" id="glucose-input" step="0.1" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 100.2">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-wellness-metric-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Registro
+                    </button>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Métricas:</h3>
+                <ul id="wellness-metrics-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-wellness-metrics">No hay registros de peso o glucosa.</li>
+                </ul>
+            </div>
+
+            <!-- Registro de Sueño -->
+            <div class="mt-8 mb-6">
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Registro de Sueño</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="sleep-hours" class="block text-sm font-medium text-gray-700 mb-1">Horas de Sueño</label>
+                        <input type="number" id="sleep-hours" step="0.5" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: 7.5">
+                    </div>
+                    <div>
+                        <label for="sleep-quality" class="block text-sm font-medium text-gray-700 mb-1">Calidad del Sueño</label>
+                        <select id="sleep-quality" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <option value="">Seleccione</option>
+                            <option value="excelente">Excelente</option>
+                            <option value="buena">Buena</option>
+                            <option value="regular">Regular</option>
+                            <option value="mala">Mala</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="sleep-notes" class="block text-sm font-medium text-gray-700 mb-1">Notas de Sueño</label>
+                    <textarea id="sleep-notes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Ej: Despertares frecuentes"></textarea>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button id="add-sleep-record-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md shadow-md transition duration-300 ease-in-out flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Añadir Sueño
+                    </button>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-xl font-medium text-gray-800 mb-4 border-b pb-2 border-gray-200">Historial de Sueño:</h3>
+                <ul id="sleep-history-list" class="space-y-3">
+                    <li class="text-gray-500 text-center" id="no-sleep-entries">No hay registros de sueño.</li>
+                </ul>
+            </div>
+        </section>
+
     </main>
 
     <footer class="bottom-nav">
         <div class="container flex justify-around items-center h-full">
-            <button id="nav-profile" class="bottom-nav-item active">
+            <button id="nav-profile" class="bottom-nav-item">
                 <i class="fas fa-user text-xl"></i>
                 <span class="text-xs mt-1">Perfil</span>
             </button>
@@ -523,6 +758,22 @@
             <button id="nav-education" class="bottom-nav-item">
                 <i class="fas fa-book-open text-xl"></i>
                 <span class="text-xs mt-1">Educación</span>
+            </button>
+            <button id="nav-agenda" class="bottom-nav-item">
+                <i class="fas fa-address-book text-xl"></i>
+                <span class="text-xs mt-1">Agenda</span>
+            </button>
+            <button id="nav-cardiology" class="bottom-nav-item active">
+                <i class="fas fa-heartbeat text-xl"></i>
+                <span class="text-xs mt-1">Cardiología</span>
+            </button>
+            <button id="nav-autism" class="bottom-nav-item">
+                <i class="fas fa-brain text-xl"></i>
+                <span class="text-xs mt-1">Autismo</span>
+            </button>
+            <button id="nav-wellness" class="bottom-nav-item">
+                <i class="fas fa-leaf text-xl"></i>
+                <span class="text-xs mt-1">Bienestar</span>
             </button>
         </div>
     </footer>
