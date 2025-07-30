@@ -11,7 +11,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyCt-gYdvPvUId9Uv7_LlzMDRNozuQre6aU",
     authDomain: "rnl01-8d925.firebaseapp.com",
     projectId: "rnl01-8d925",
-    storageBucket: "rnl01-8d925.firebasestorage.app",
+    storageBucket: "rnl01-8d925.firebaseapp.com",
     messagingSenderId: "176287262226",
     appId: "1:176287262226:web:a3a62140b8a974a3031acb",
     measurementId: "G-8F1ZZP1007"
@@ -37,11 +37,12 @@ const liquidsSection = document.getElementById('liquids-section');
 const medsSection = document.getElementById('meds-section');
 const labsSection = document.getElementById('labs-section');
 const educationSection = document.getElementById('education-section');
+const agendaSection = document.getElementById('agenda-section'); // Nueva sección de agenda
 
 const profileForm = document.getElementById('profile-form');
 const systemMessage = document.getElementById('system-message');
 const loadingOverlay = document.getElementById('loading-overlay');
-const userIdDisplay = document.getElementById('user-id-display'); // Asegúrate de que este elemento exista si lo usas
+// const userIdDisplay = document.getElementById('user-id-display'); // Comentado: este elemento no existe en el HTML
 const profilePictureInput = document.getElementById('profilePicture');
 const profilePicturePreview = document.getElementById('profile-picture-preview');
 
@@ -55,12 +56,29 @@ const liquidHistoryList = document.getElementById('liquid-history-list');
 const noLiquidEntriesMessage = document.getElementById('no-liquid-entries');
 const settingsButton = document.getElementById('settings-button');
 
+// Elementos de la sección de medicamentos
+const newMedFrequencySelect = document.getElementById('new-med-frequency');
+const medTimesContainer = document.getElementById('med-times-container');
+const addNewMedButton = document.getElementById('add-new-med-button');
+const medsList = document.getElementById('meds-list');
+const noMedsEntriesMessage = document.getElementById('no-meds-entries');
+
+// Elementos de la sección de agenda
+const newContactNameInput = document.getElementById('new-contact-name');
+const newContactPhoneInput = document.getElementById('new-contact-phone');
+const newContactProfessionInput = document.getElementById('new-contact-profession');
+const addNewContactButton = document.getElementById('add-new-contact-button');
+const contactsList = document.getElementById('contacts-list');
+const noContactsEntriesMessage = document.getElementById('no-contacts-entries');
+
+
 // Elementos de navegación inferior
 const navProfileButton = document.getElementById('nav-profile');
 const navLiquidsButton = document.getElementById('nav-liquids');
 const navMedsButton = document.getElementById('nav-meds');
 const navLabsButton = document.getElementById('nav-labs');
 const navEducationButton = document.getElementById('nav-education');
+const navAgendaButton = document.getElementById('nav-agenda'); // Nuevo botón de agenda
 
 
 // --- Funciones de Utilidad ---
@@ -104,7 +122,8 @@ function toggleLoading(show) {
  */
 function showSection(sectionId) {
     console.log(`Attempting to show section: ${sectionId}`);
-    const sections = [profileSection, liquidsSection, medsSection, labsSection, educationSection];
+    // Añadir la nueva sección a la lista
+    const sections = [profileSection, liquidsSection, medsSection, labsSection, educationSection, agendaSection];
     sections.forEach(section => {
         if (section.id === sectionId) {
             section.classList.remove('hidden');
@@ -115,12 +134,13 @@ function showSection(sectionId) {
     });
 
     // Actualizar el estado activo de los botones de navegación
-    const navButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navEducationButton];
+    const navButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navEducationButton, navAgendaButton];
     navButtons.forEach(button => {
+        // Remover 'active' de todos los botones
+        button.classList.remove('active');
+        // Añadir 'active' al botón correspondiente a la sección mostrada
         if (button.id === `nav-${sectionId.replace('-section', '')}`) {
             button.classList.add('active');
-        } else {
-            button.classList.remove('active');
         }
     });
 }
@@ -140,11 +160,13 @@ async function initializeFirebase() {
             console.log('Auth state changed. User:', user ? user.uid : 'none');
             if (user) {
                 userId = user.uid;
-                // userIdDisplay.textContent = `ID de Usuario: ${userId}`; // Comentado si no existe el elemento HTML
+                // userIdDisplay.textContent = `ID de Usuario: ${userId}`; // Comentado: este elemento no existe en el HTML
                 console.log('Usuario autenticado:', userId);
                 isAuthReady = true;
-                await loadUserProfile(); // Cargar el perfil, pero no redirigir automáticamente
+                await loadUserProfile(); // Cargar el perfil para obtener el liquidLimit, etc.
                 setupLiquidTrackerListener(); // Configurar el listener de líquidos
+                setupContactsListener(); // Configurar el listener de contactos
+                // No llamamos a showSection aquí, ya que agenda-section es visible por defecto en HTML ahora.
             } else {
                 console.log('No hay usuario autenticado, intentando inicio de sesión anónimo...');
                 try {
@@ -203,7 +225,7 @@ async function loadUserProfile() {
         return;
     }
 
-    toggleLoading(true);
+    // No mostrar el spinner aquí, ya se muestra en initializeFirebase
     try {
         const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
         const docSnap = await getDoc(userProfileDocRef);
@@ -239,20 +261,17 @@ async function loadUserProfile() {
             userName = data.name || "Paciente";
 
             showSystemMessage('Perfil cargado exitosamente.', 'success');
-            // NO redirigir automáticamente aquí. La sección de perfil ya es visible por defecto.
         } else {
             console.log("No se encontró un perfil existente para este usuario.");
             showSystemMessage('Bienvenido/a. Por favor, completa tu perfil.', 'info');
             dailyLiquidLimit = 2000;
             dailyLimitDisplay.textContent = `${dailyLiquidLimit} ml`;
-            // NO redirigir automáticamente aquí. La sección de perfil ya es visible por defecto.
         }
     } catch (e) {
         console.error("Error al cargar el perfil del paciente:", e);
         showSystemMessage('Error al cargar el perfil. Intenta de nuevo.', 'error');
-    } finally {
-        toggleLoading(false);
     }
+    // No ocultar el spinner aquí, se oculta en initializeFirebase
 }
 
 /**
@@ -306,9 +325,6 @@ async function saveUserProfile(event) {
         showSystemMessage('¡Perfil guardado exitosamente!', 'success');
 
         userName = profileData.name || "Paciente";
-
-        // NO redirigir automáticamente aquí. El usuario puede navegar libremente.
-        // showSection('liquids-section'); 
 
     } catch (e) {
         console.error("Error al guardar el perfil del paciente:", e);
@@ -407,6 +423,85 @@ function setupLiquidTrackerListener() {
     });
 }
 
+// --- Funciones de Medicamentos ---
+
+/**
+ * Genera los campos de entrada de hora dinámicamente según la frecuencia seleccionada.
+ */
+function generateMedTimeInputs() {
+    const frequency = newMedFrequencySelect.value;
+    medTimesContainer.innerHTML = ''; // Limpiar campos existentes
+
+    let numberOfInputs = 0;
+    if (frequency === 'daily' || frequency === 'weekly' || frequency === 'as-needed' || frequency === '') {
+        numberOfInputs = 1; // Un campo por defecto si no se selecciona nada o es diario/semanal/según necesidad
+    } else if (frequency === 'twice-daily') {
+        numberOfInputs = 2;
+    } else if (frequency === 'three-times-daily') {
+        numberOfInputs = 3;
+    }
+
+    if (numberOfInputs > 0) {
+        const label = document.createElement('label');
+        label.className = 'block text-sm font-medium text-gray-700 mb-1';
+        label.textContent = 'Hora(s)';
+        medTimesContainer.appendChild(label);
+
+        for (let i = 0; i < numberOfInputs; i++) {
+            const input = document.createElement('input');
+            input.type = 'time';
+            input.name = `medTime${i}`; // Usar nombres únicos para cada campo de hora
+            input.className = 'mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm mb-2';
+            medTimesContainer.appendChild(input);
+        }
+    }
+}
+
+/**
+ * Añade un nuevo medicamento a la lista (y eventualmente a Firestore).
+ */
+async function addNewMed() {
+    // Aquí iría la lógica para guardar el medicamento en Firestore
+    // Por ahora, solo mostraremos un mensaje y limpiaremos los campos.
+    const name = document.getElementById('new-med-name').value;
+    const dose = document.getElementById('new-med-dose').value;
+    const frequency = newMedFrequencySelect.value;
+    
+    // Recolectar todas las horas dinámicamente
+    const times = Array.from(medTimesContainer.querySelectorAll('input[type="time"]')).map(input => input.value).filter(time => time);
+
+    if (!name || !dose || !frequency || (times.length === 0 && frequency !== 'as-needed')) {
+        showSystemMessage('Por favor, completa todos los campos del medicamento, incluyendo al menos una hora si aplica.', 'error');
+        return;
+    }
+
+    // Simulación de añadir a la lista
+    const li = document.createElement('li');
+    li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
+    li.innerHTML = `
+        <div>
+            <p class="font-semibold text-gray-800">${name} - ${dose}</p>
+            <p class="text-sm text-gray-600">Frecuencia: ${frequency} - Hora(s): ${times.join(', ')}</p>
+        </div>
+        <div class="flex space-x-2">
+            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded-md text-sm">Tomado</button>
+            <button class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+        </div>
+    `;
+    medsList.appendChild(li);
+    noMedsEntriesMessage.classList.add('hidden'); // Ocultar el mensaje de "No hay medicamentos"
+
+    // Limpiar campos
+    document.getElementById('new-med-name').value = '';
+    document.getElementById('new-med-dose').value = '';
+    newMedFrequencySelect.value = '';
+    generateMedTimeInputs(); // Volver a generar los campos de hora (probablemente ninguno o uno vacío)
+
+    showSystemMessage('Medicamento añadido exitosamente.', 'success');
+}
+
+
 /**
  * Añade una nueva entrada de líquido.
  */
@@ -470,6 +565,150 @@ async function deleteLiquidEntry(event) {
     }
 }
 
+// --- Funciones de Agenda / Contactos ---
+
+/**
+ * Configura el listener en tiempo real para los contactos.
+ */
+function setupContactsListener() {
+    if (!db || !userId || !isAuthReady) {
+        console.log('Firestore o userId no disponibles para el listener de contactos.');
+        return;
+    }
+
+    const contactsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contacts`);
+    
+    // Ordenar por nombre para una mejor visualización
+    const q = query(contactsCollectionRef, orderBy("name", "asc"));
+
+    onSnapshot(q, (snapshot) => {
+        contactsList.innerHTML = ''; // Limpiar lista actual
+        const contacts = [];
+
+        snapshot.forEach((doc) => {
+            contacts.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (contacts.length === 0) {
+            noContactsEntriesMessage.classList.remove('hidden');
+        } else {
+            noContactsEntriesMessage.classList.add('hidden');
+            contacts.forEach(contact => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-800">${contact.name}</p>
+                        <p class="text-sm text-gray-600">Teléfono: ${contact.phone} - Cargo/Profesión: ${contact.profession}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <a href="tel:${contact.phone}" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded-md text-sm flex items-center">
+                            <i class="fas fa-phone mr-1"></i> Llamar
+                        </a>
+                        <button data-id="${contact.id}" class="edit-contact-entry bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">
+                            Editar
+                        </button>
+                        <button data-id="${contact.id}" class="delete-contact-entry bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">
+                            Eliminar
+                        </button>
+                    </div>
+                `;
+                contactsList.appendChild(li);
+            });
+            // Añadir event listeners a los nuevos botones de eliminar
+            document.querySelectorAll('.delete-contact-entry').forEach(button => {
+                button.addEventListener('click', deleteContactEntry);
+            });
+            // Aquí se añadirían listeners para editar si se implementa esa funcionalidad
+            document.querySelectorAll('.edit-contact-entry').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    showSystemMessage('Funcionalidad de edición de contactos se implementará aquí.', 'info');
+                    // Lógica para editar contacto
+                });
+            });
+        }
+    }, (error) => {
+        console.error("Error al obtener datos de contactos en tiempo real:", error);
+        showSystemMessage('Error al cargar la agenda de contactos.', 'error');
+    });
+}
+
+/**
+ * Añade un nuevo contacto a Firestore.
+ */
+async function addNewContact() {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para añadir contactos.', 'error');
+        return;
+    }
+
+    const name = newContactNameInput.value.trim();
+    const phone = newContactPhoneInput.value.trim();
+    const profession = newContactProfessionInput.value.trim();
+
+    if (!name || !phone || !profession) {
+        showSystemMessage('Por favor, completa todos los campos del contacto.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const contactsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contacts`);
+        await addDoc(contactsCollectionRef, {
+            name: name,
+            phone: phone,
+            profession: profession,
+            timestamp: serverTimestamp() // Para ordenar si es necesario
+        });
+        
+        // Limpiar campos después de guardar
+        newContactNameInput.value = '';
+        newContactPhoneInput.value = '';
+        newContactProfessionInput.value = '';
+
+        showSystemMessage('Contacto añadido exitosamente.', 'success');
+    } catch (e) {
+        console.error("Error al añadir contacto:", e);
+        showSystemMessage('Error al añadir el contacto. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+/**
+ * Elimina una entrada de contacto.
+ * @param {Event} event - El evento de click del botón de eliminar.
+ */
+async function deleteContactEntry(event) {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para eliminar contactos.', 'error');
+        return;
+    }
+
+    const entryId = event.currentTarget.dataset.id;
+    if (!entryId) {
+        console.error("ID de contacto no encontrado.");
+        showSystemMessage('Error: No se pudo identificar el contacto a eliminar.', 'error');
+        return;
+    }
+
+    // Aquí podrías añadir una confirmación visual antes de eliminar
+    const confirmDelete = true; // Por ahora, asumimos que siempre se confirma
+    if (!confirmDelete) return;
+
+    toggleLoading(true);
+    try {
+        const docRef = doc(db, `artifacts/${appId}/users/${userId}/contacts`, entryId);
+        await deleteDoc(docRef);
+        showSystemMessage('Contacto eliminado.', 'success');
+    } catch (e) {
+        console.error("Error al eliminar contacto:", e);
+        showSystemMessage('Error al eliminar el contacto. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
 
 // --- Lógica de previsualización de imagen de perfil ---
 profilePictureInput.addEventListener('change', function() {
@@ -523,9 +762,22 @@ profileForm.addEventListener('submit', saveUserProfile);
 addLiquidButton.addEventListener('click', addLiquidEntry);
 settingsButton.addEventListener('click', () => showSystemMessage('Funcionalidad de ajustes de líquidos (cambiar límite) se implementará aquí.', 'info'));
 
+// Event listener para la frecuencia de medicamentos
+newMedFrequencySelect.addEventListener('change', generateMedTimeInputs);
+// Event listener para añadir nuevo medicamento
+addNewMedButton.addEventListener('click', addNewMed);
+
+// Event listener para añadir nuevo contacto
+addNewContactButton.addEventListener('click', addNewContact);
+
+
 // Navegación inferior
 navProfileButton.addEventListener('click', () => showSection('profile-section'));
 navLiquidsButton.addEventListener('click', () => showSection('liquids-section'));
 navMedsButton.addEventListener('click', () => showSection('meds-section'));
 navLabsButton.addEventListener('click', () => showSection('labs-section'));
 navEducationButton.addEventListener('click', () => showSection('education-section'));
+navAgendaButton.addEventListener('click', () => showSection('agenda-section')); // Nuevo event listener para agenda
+
+// Inicializar los campos de hora al cargar la página si ya hay una frecuencia preseleccionada
+window.addEventListener('DOMContentLoaded', generateMedTimeInputs);
