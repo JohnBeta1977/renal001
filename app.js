@@ -30,13 +30,30 @@ let isAuthReady = false;
 let dailyLiquidLimit = 0; // Límite de líquidos del perfil del usuario
 let userName = "Paciente"; // Nombre del usuario para la pantalla de inicio
 
+// Variables para el flujo de registro guiado
+let currentGuidedFlowType = null; // 'hemodialysis', 'cardiology', 'autism', 'none'
+let currentGuidedFlowIndex = -1; // -1: profile, 0: first section in flow, etc.
+let isRegistrationComplete = false; // True if the guided flow has been completed
+let userProfileLoaded = false; // Para asegurar que el perfil se ha cargado antes de iniciar el flujo guiado
+
+// Define las secciones para cada tipo de flujo guiado (excluyendo 'profile-section' ya que es el inicio)
+// Las secciones se listan en el orden en que aparecerán en el flujo guiado.
+const guidedFlowSections = {
+    'hemodialysis': ['liquids-section', 'meds-section', 'labs-section', 'agenda-section', 'wellness-section'],
+    'peritoneal': ['liquids-section', 'meds-section', 'labs-section', 'agenda-section', 'wellness-section'],
+    'cardiology': ['meds-section', 'labs-section', 'agenda-section', 'cardiology-section', 'wellness-section'],
+    'autism': ['meds-section', 'labs-section', 'agenda-section', 'autism-section', 'wellness-section'],
+    'none': ['meds-section', 'labs-section', 'agenda-section', 'wellness-section']
+};
+let currentGuidedFlow = []; // Array que contendrá el flujo de secciones para el tipo de usuario actual
+
+
 // --- Referencias a elementos del DOM ---
 const mainHeader = document.getElementById('main-header');
 const profileSection = document.getElementById('profile-section');
 const liquidsSection = document.getElementById('liquids-section');
 const medsSection = document.getElementById('meds-section');
 const labsSection = document.getElementById('labs-section');
-// const educationSection = document.getElementById('education-section'); // Eliminado: fusionado con Bienestar
 const agendaSection = document.getElementById('agenda-section');
 const cardiologySection = document.getElementById('cardiology-section');
 const autismSection = document.getElementById('autism-section'); // Ahora ATM Leve
@@ -47,7 +64,11 @@ const systemMessage = document.getElementById('system-message');
 const loadingOverlay = document.getElementById('loading-overlay');
 const profilePictureInput = document.getElementById('profilePicture');
 const profilePicturePreview = document.getElementById('profile-picture-preview');
+const selectedFileNameDisplay = document.getElementById('selected-file-name'); // Nuevo: para mostrar el nombre del archivo
 const dialysisTypeSelect = document.getElementById('dialysisType'); // Referencia al select de tipo de diálisis/condición
+
+const profileSaveButton = document.getElementById('profile-save-button'); // Botón de guardar perfil
+const guidedActionButton = document.getElementById('guided-action-button'); // Nuevo botón de acción flotante
 
 // Elementos de la sección de líquidos
 const dailyLimitDisplay = document.getElementById('daily-limit');
@@ -119,10 +140,13 @@ const navProfileButton = document.getElementById('nav-profile');
 const navLiquidsButton = document.getElementById('nav-liquids');
 const navMedsButton = document.getElementById('nav-meds');
 const navLabsButton = document.getElementById('nav-labs');
-// const navEducationButton = document.getElementById('nav-education'); // Eliminado
+const navMoreButton = document.getElementById('nav-more'); // Nuevo botón "Más"
+const moreOptionsDropdown = document.getElementById('more-options-dropdown'); // Contenedor del menú desplegable
+
+// Botones dentro del menú desplegable (también referenciados para gestión de visibilidad)
 const navAgendaButton = document.getElementById('nav-agenda');
 const navCardiologyButton = document.getElementById('nav-cardiology');
-const navAutismButton = document.getElementById('nav-autism'); // Ahora para ATM
+const navAutismButton = document.getElementById('nav-autism');
 const navWellnessButton = document.getElementById('nav-wellness');
 
 
@@ -167,7 +191,6 @@ function toggleLoading(show) {
  */
 function showSection(sectionId) {
     console.log(`Attempting to show section: ${sectionId}`);
-    // Añadir las nuevas secciones a la lista
     const sections = [profileSection, liquidsSection, medsSection, labsSection, agendaSection, cardiologySection, autismSection, wellnessSection];
     sections.forEach(section => {
         if (section.id === sectionId) {
@@ -178,16 +201,28 @@ function showSection(sectionId) {
         }
     });
 
-    // Actualizar el estado activo de los botones de navegación
-    const navButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navAgendaButton, navCardiologyButton, navAutismButton, navWellnessButton];
-    navButtons.forEach(button => {
-        // Remover 'active' de todos los botones
+    // Actualizar el estado activo de los botones de navegación principales
+    const mainNavButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navMoreButton];
+    mainNavButtons.forEach(button => {
         button.classList.remove('active');
-        // Añadir 'active' al botón correspondiente a la sección mostrada
         if (button.id === `nav-${sectionId.replace('-section', '')}`) {
             button.classList.add('active');
         }
     });
+
+    // Actualizar el estado activo de los botones dentro del menú desplegable
+    const dropdownNavButtons = [navAgendaButton, navCardiologyButton, navAutismButton, navWellnessButton];
+    dropdownNavButtons.forEach(button => {
+        button.classList.remove('active');
+        if (button.id === `nav-${sectionId.replace('-section', '')}`) {
+            button.classList.add('active');
+            // Si una sección del dropdown está activa, el botón "Más" también debe estarlo
+            navMoreButton.classList.add('active');
+        }
+    });
+
+    // Ocultar el menú desplegable si se navega a una sección
+    moreOptionsDropdown.classList.add('hidden');
 }
 
 /**
@@ -213,6 +248,74 @@ function updateConditionalSectionsVisibility() {
     }
 }
 
+/**
+ * Actualiza el estado del botón de acción flotante (Iniciar Registro Guiado / Siguiente / Finalizar Registro).
+ */
+function updateGuidedFlowState() {
+    if (!userProfileLoaded || isRegistrationComplete) {
+        guidedActionButton.classList.add('hidden');
+        return;
+    }
+
+    guidedActionButton.classList.remove('hidden');
+    if (currentGuidedFlowIndex === -1) {
+        guidedActionButton.textContent = 'Iniciar Registro Guiado';
+    } else if (currentGuidedFlowIndex < currentGuidedFlow.length - 1) {
+        guidedActionButton.textContent = 'Siguiente';
+    } else {
+        guidedActionButton.textContent = 'Finalizar Registro';
+    }
+}
+
+/**
+ * Actualiza el estado de los botones de navegación inferior (habilitar/deshabilitar, mostrar/ocultar).
+ */
+function updateNavigationButtonsState() {
+    const mainNavButtons = [navProfileButton, navLiquidsButton, navMedsButton, navLabsButton, navMoreButton];
+    const dropdownNavButtons = [navAgendaButton, navCardiologyButton, navAutismButton, navWellnessButton];
+
+    mainNavButtons.forEach(button => {
+        if (isRegistrationComplete) {
+            button.removeAttribute('disabled');
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+            button.classList.remove('hidden'); // Asegurar que los botones principales estén visibles
+        } else {
+            // Durante el registro, solo Perfil y el botón "Más" (si se necesita para el flujo) están activos.
+            // Los demás están deshabilitados y ocultos si no son parte del flujo actual.
+            button.setAttribute('disabled', 'true');
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            if (button.id === 'nav-profile' || button.id === 'nav-more') { // Siempre habilitar Perfil y Más
+                button.removeAttribute('disabled');
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+                button.classList.remove('hidden');
+            } else {
+                button.classList.add('hidden'); // Ocultar los demás botones principales
+            }
+        }
+    });
+
+    dropdownNavButtons.forEach(button => {
+        if (isRegistrationComplete) {
+            button.removeAttribute('disabled');
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+            // La visibilidad de Cardiología y ATM se maneja por updateConditionalSectionsVisibility
+            if (button.id === 'nav-cardiology' || button.id === 'nav-autism') {
+                // Su visibilidad real se establecerá por updateConditionalSectionsVisibility
+                // No la ocultamos aquí para que updateConditionalSectionsVisibility tenga control
+            } else {
+                button.classList.remove('hidden'); // Mostrar Agenda y Bienestar
+            }
+        } else {
+            button.setAttribute('disabled', 'true');
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            button.classList.add('hidden'); // Ocultar todos los botones del dropdown durante el registro
+        }
+    });
+
+    // Asegurar que la visibilidad condicional se aplique también a los botones del dropdown
+    updateConditionalSectionsVisibility();
+}
+
 
 // --- Inicialización de Firebase ---
 async function initializeFirebase() {
@@ -233,16 +336,17 @@ async function initializeFirebase() {
                 isAuthReady = true;
                 await loadUserProfile(); // Cargar el perfil para obtener el liquidLimit, etc.
                 setupLiquidTrackerListener(); // Configurar el listener de líquidos
+                setupMedsListener(); // Configurar el listener de medicamentos
+                setupLabsListener(); // Configurar el listener de citas/laboratorios
                 setupContactsListener(); // Configurar el listener de contactos
                 setupCardiologyListeners(); // Configurar listeners de cardiología
                 setupAutismListeners(); // Configurar listeners de autismo
                 setupWellnessListeners(); // Configurar listeners de bienestar
                 
-                // Asegurarse de que la visibilidad de las secciones condicionales se actualice después de cargar el perfil
-                updateConditionalSectionsVisibility();
-
-                // Mostrar la sección de perfil por defecto al cargar la app
-                showSection('profile-section');
+                // Actualizar el estado de la UI después de cargar el perfil
+                updateGuidedFlowState();
+                updateNavigationButtonsState();
+                showSection('profile-section'); // Siempre iniciar en la sección de perfil
 
             } else {
                 console.log('No hay usuario autenticado, intentando inicio de sesión anónimo...');
@@ -303,7 +407,6 @@ async function loadUserProfile() {
         return;
     }
 
-    // No mostrar el spinner aquí, ya se muestra en initializeFirebase
     try {
         const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
         const docSnap = await getDoc(userProfileDocRef);
@@ -317,7 +420,7 @@ async function loadUserProfile() {
             document.getElementById('ipsName').value = data.ipsName || '';
             document.getElementById('dialysisClinicName').value = data.dialysisClinicName || '';
             document.getElementById('clinicPhone').value = data.clinicPhone || '';
-            dialysisTypeSelect.value = data.dialysisType || ''; // Usar la referencia directa
+            dialysisTypeSelect.value = data.dialysisType || ''; 
             document.getElementById('hemodialysisTime').value = data.hemodialysisTime || '';
 
             const hemodialysisDaysCheckboxes = document.querySelectorAll('input[name="hemodialysisDays"]');
@@ -330,13 +433,21 @@ async function loadUserProfile() {
             
             if (data.profilePictureUrl) {
                 profilePicturePreview.src = data.profilePictureUrl;
+                // Mostrar el nombre del archivo si hay una URL de imagen
+                const fileName = data.profilePictureUrl.substring(data.profilePictureUrl.lastIndexOf('/') + 1).split('?')[0];
+                selectedFileNameDisplay.textContent = fileName;
             } else {
                 profilePicturePreview.src = "https://placehold.co/80x80/cccccc/333333?text=Foto";
+                selectedFileNameDisplay.textContent = 'Ningún archivo seleccionado';
             }
 
             dailyLiquidLimit = data.liquidLimit || 2000;
             dailyLimitDisplay.textContent = `${dailyLiquidLimit} ml`;
             userName = data.name || "Paciente";
+
+            isRegistrationComplete = data.isRegistrationComplete || false;
+            currentGuidedFlowType = data.dialysisType || null; // Cargar el tipo de flujo guardado
+            currentGuidedFlow = guidedFlowSections[currentGuidedFlowType] || guidedFlowSections['none']; // Set the flow based on loaded type
 
             showSystemMessage('Perfil cargado exitosamente.', 'success');
         } else {
@@ -344,12 +455,15 @@ async function loadUserProfile() {
             showSystemMessage('Bienvenido/a. Por favor, completa tu perfil.', 'info');
             dailyLiquidLimit = 2000;
             dailyLimitDisplay.textContent = `${dailyLiquidLimit} ml`;
+            isRegistrationComplete = false;
+            selectedFileNameDisplay.textContent = 'Ningún archivo seleccionado'; // Resetear al cargar un perfil nuevo
         }
     } catch (e) {
         console.error("Error al cargar el perfil del paciente:", e);
         showSystemMessage('Error al cargar el perfil. Intenta de nuevo.', 'error');
+    } finally {
+        userProfileLoaded = true; // El perfil ya fue cargado, se puede iniciar el flujo guiado si aplica
     }
-    // No ocultar el spinner aquí, se oculta en initializeFirebase
 }
 
 /**
@@ -388,6 +502,7 @@ async function saveUserProfile(event) {
             if (uploadedUrl) {
                 profilePictureUrl = uploadedUrl;
                 profilePicturePreview.src = uploadedUrl;
+                selectedFileNameDisplay.textContent = profilePictureFile.name;
             } else {
                 showSystemMessage('Fallo al subir la foto de perfil. Se guardará el perfil sin la nueva imagen.', 'error');
             }
@@ -395,6 +510,8 @@ async function saveUserProfile(event) {
         
         profileData.profilePictureUrl = profilePictureUrl;
         profileData.liquidLimit = dailyLiquidLimit;
+        profileData.isRegistrationComplete = isRegistrationComplete; // Guardar el estado de registro
+        profileData.dialysisType = dialysisTypeSelect.value; // Asegurarse de guardar el tipo de diálisis/condición
 
         const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
         await setDoc(userProfileDocRef, profileData, { merge: true });
@@ -403,9 +520,13 @@ async function saveUserProfile(event) {
         showSystemMessage('¡Perfil guardado exitosamente!', 'success');
 
         userName = profileData.name || "Paciente";
+        currentGuidedFlowType = profileData.dialysisType; // Actualizar el tipo de flujo
+        currentGuidedFlow = guidedFlowSections[currentGuidedFlowType] || guidedFlowSections['none']; // Reset the flow based on new type
 
-        // Actualizar la visibilidad de las secciones condicionales después de guardar el perfil
+        // Actualizar la visibilidad de las secciones condicionales y el botón guiado
         updateConditionalSectionsVisibility();
+        updateGuidedFlowState();
+        updateNavigationButtonsState(); // Actualizar el estado de los botones de navegación
 
     } catch (e) {
         console.error("Error al guardar el perfil del paciente:", e);
@@ -414,6 +535,56 @@ async function saveUserProfile(event) {
         toggleLoading(false);
     }
 }
+
+/**
+ * Maneja el clic en el botón de acción flotante para el flujo guiado.
+ */
+async function handleGuidedActionClick() {
+    if (!db || !userId || !isAuthReady || !userProfileLoaded) {
+        showSystemMessage('La aplicación no está lista. Por favor, espera o recarga la página.', 'error');
+        return;
+    }
+
+    if (isRegistrationComplete) {
+        // Si el registro ya está completo, el botón debería estar oculto.
+        return; 
+    }
+
+    toggleLoading(true);
+    try {
+        if (currentGuidedFlowIndex === -1) { // Iniciar el registro guiado
+            if (!currentGuidedFlowType || currentGuidedFlowType === "") {
+                showSystemMessage('Por favor, selecciona tu "Tipo de Diálisis / Condición" en el perfil y guarda antes de iniciar el registro guiado.', 'info');
+                toggleLoading(false);
+                return;
+            }
+            currentGuidedFlow = guidedFlowSections[currentGuidedFlowType] || guidedFlowSections['none'];
+            currentGuidedFlowIndex = 0;
+            showSection(currentGuidedFlow[currentGuidedFlowIndex]);
+            showSystemMessage('Iniciando el registro guiado...', 'info');
+        } else if (currentGuidedFlowIndex < currentGuidedFlow.length - 1) { // Siguiente paso
+            currentGuidedFlowIndex++;
+            showSection(currentGuidedFlow[currentGuidedFlowIndex]);
+            showSystemMessage('Avanzando al siguiente paso.', 'info');
+        } else { // Finalizar registro
+            isRegistrationComplete = true;
+            // Guardar el estado de registro completo en Firestore
+            const userProfileDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'patientProfile');
+            await setDoc(userProfileDocRef, { isRegistrationComplete: true }, { merge: true });
+
+            showSystemMessage('Registro completado. ¡Bienvenido/a a RenalCare!', 'success');
+            showSection('profile-section'); // Redirigir al perfil después de completar
+        }
+    } catch (e) {
+        console.error("Error en el flujo guiado:", e);
+        showSystemMessage('Ocurrió un error en el flujo de registro. Intenta de nuevo.', 'error');
+    } finally {
+        updateGuidedFlowState(); // Actualizar el estado del botón flotante
+        updateNavigationButtonsState(); // Actualizar el estado de los botones de navegación
+        toggleLoading(false);
+    }
+}
+
 
 // --- Funciones de Seguimiento de Líquidos ---
 
@@ -570,6 +741,58 @@ async function deleteLiquidEntry(event) {
 // --- Funciones de Medicamentos ---
 
 /**
+ * Configura el listener en tiempo real para los medicamentos.
+ */
+function setupMedsListener() {
+    if (!db || !userId || !isAuthReady) {
+        console.log('Firestore o userId no disponibles para el listener de medicamentos.');
+        return;
+    }
+
+    const medsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/medications`);
+    const q = query(medsCollectionRef, orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+        medsList.innerHTML = '';
+        const meds = [];
+        snapshot.forEach((doc) => {
+            meds.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (meds.length === 0) {
+            noMedsEntriesMessage.classList.remove('hidden');
+        } else {
+            noMedsEntriesMessage.classList.add('hidden');
+            meds.forEach(med => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-800">${med.name} - ${med.dose}</p>
+                        <p class="text-sm text-gray-600">Frecuencia: ${med.frequency} - Hora(s): ${med.times.join(', ')}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded-md text-sm">Tomado</button>
+                        <button data-id="${med.id}" class="edit-med-entry bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                        <button data-id="${med.id}" class="delete-med-entry bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                    </div>
+                `;
+                medsList.appendChild(li);
+            });
+            document.querySelectorAll('.delete-med-entry').forEach(button => {
+                button.addEventListener('click', deleteMedEntry);
+            });
+            document.querySelectorAll('.edit-med-entry').forEach(button => {
+                button.addEventListener('click', () => showSystemMessage('Funcionalidad de edición de medicamentos se implementará aquí.', 'info'));
+            });
+        }
+    }, (error) => {
+        console.error("Error al obtener datos de medicamentos en tiempo real:", error);
+        showSystemMessage('Error al cargar la lista de medicamentos.', 'error');
+    });
+}
+
+/**
  * Genera los campos de entrada de hora dinámicamente según la frecuencia seleccionada.
  */
 function generateMedTimeInputs() {
@@ -602,13 +825,16 @@ function generateMedTimeInputs() {
 }
 
 /**
- * Añade un nuevo medicamento a la lista (y eventualmente a Firestore).
+ * Añade un nuevo medicamento a Firestore.
  */
 async function addNewMed() {
-    // Aquí iría la lógica para guardar el medicamento en Firestore
-    // Por ahora, solo mostraremos un mensaje y limpiaremos los campos.
-    const name = document.getElementById('new-med-name').value;
-    const dose = document.getElementById('new-med-dose').value;
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para añadir medicamentos.', 'error');
+        return;
+    }
+
+    const name = document.getElementById('new-med-name').value.trim();
+    const dose = document.getElementById('new-med-dose').value.trim();
     const frequency = newMedFrequencySelect.value;
     
     // Recolectar todas las horas dinámicamente
@@ -619,30 +845,275 @@ async function addNewMed() {
         return;
     }
 
-    // Simulación de añadir a la lista
-    const li = document.createElement('li');
-    li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
-    li.innerHTML = `
-        <div>
-            <p class="font-semibold text-gray-800">${name} - ${dose}</p>
-            <p class="text-sm text-gray-600">Frecuencia: ${frequency} - Hora(s): ${times.join(', ')}</p>
-        </div>
-        <div class="flex space-x-2">
-            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded-md text-sm">Tomado</button>
-            <button class="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
-            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
-        </div>
-    `;
-    medsList.appendChild(li);
-    noMedsEntriesMessage.classList.add('hidden'); // Ocultar el mensaje de "No hay medicamentos"
+    toggleLoading(true);
+    try {
+        const medsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/medications`);
+        await addDoc(medsCollectionRef, {
+            name: name,
+            dose: dose,
+            frequency: frequency,
+            times: times,
+            timestamp: serverTimestamp()
+        });
+        
+        // Limpiar campos
+        document.getElementById('new-med-name').value = '';
+        document.getElementById('new-med-dose').value = '';
+        newMedFrequencySelect.value = '';
+        generateMedTimeInputs(); // Volver a generar los campos de hora (probablemente ninguno o uno vacío)
 
-    // Limpiar campos
-    document.getElementById('new-med-name').value = '';
-    document.getElementById('new-med-dose').value = '';
-    newMedFrequencySelect.value = '';
-    generateMedTimeInputs(); // Volver a generar los campos de hora (probablemente ninguno o uno vacío)
+        showSystemMessage('Medicamento añadido exitosamente.', 'success');
+    }
+    catch (e) {
+        console.error("Error al añadir medicamento:", e);
+        showSystemMessage('Error al añadir el medicamento. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
 
-    showSystemMessage('Medicamento añadido exitosamente.', 'success');
+/**
+ * Elimina una entrada de medicamento.
+ * @param {Event} event - El evento de click del botón de eliminar.
+ */
+async function deleteMedEntry(event) {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para eliminar medicamentos.', 'error');
+        return;
+    }
+
+    const entryId = event.currentTarget.dataset.id;
+    if (!entryId) {
+        console.error("ID de medicamento no encontrado.");
+        showSystemMessage('Error: No se pudo identificar el medicamento a eliminar.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const docRef = doc(db, `artifacts/${appId}/users/${userId}/medications`, entryId);
+        await deleteDoc(docRef);
+        showSystemMessage('Medicamento eliminado.', 'success');
+    } catch (e) {
+        console.error("Error al eliminar medicamento:", e);
+        showSystemMessage('Error al eliminar el medicamento. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// --- Funciones de Citas/Laboratorios ---
+
+/**
+ * Configura el listener en tiempo real para las citas y laboratorios.
+ */
+function setupLabsListener() {
+    if (!db || !userId || !isAuthReady) {
+        console.log('Firestore o userId no disponibles para el listener de citas/labs.');
+        return;
+    }
+
+    // Listener para citas
+    const appointmentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/appointments`);
+    const appointmentsQuery = query(appointmentsCollectionRef, orderBy("date", "asc"), orderBy("time", "asc"));
+
+    onSnapshot(appointmentsQuery, (snapshot) => {
+        appointmentsList.innerHTML = '';
+        const appointments = [];
+        snapshot.forEach((doc) => {
+            appointments.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (appointments.length === 0) {
+            noAppointmentsEntriesMessage.classList.remove('hidden');
+        } else {
+            noAppointmentsEntriesMessage.classList.add('hidden');
+            appointments.forEach(appointment => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-800">${appointment.name}</p>
+                        <p class="text-sm text-gray-600">Fecha: ${appointment.date} - Hora: ${appointment.time} - Lugar: ${appointment.place}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button data-id="${appointment.id}" data-collection="appointments" class="edit-labs-entry bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                        <button data-id="${appointment.id}" data-collection="appointments" class="delete-labs-entry bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                    </div>
+                `;
+                appointmentsList.appendChild(li);
+            });
+            document.querySelectorAll('.delete-labs-entry[data-collection="appointments"]').forEach(button => {
+                button.addEventListener('click', deleteLabsEntry);
+            });
+            document.querySelectorAll('.edit-labs-entry[data-collection="appointments"]').forEach(button => {
+                button.addEventListener('click', () => showSystemMessage('Funcionalidad de edición de citas se implementará aquí.', 'info'));
+            });
+        }
+    }, (error) => {
+        console.error("Error al obtener citas en tiempo real:", error);
+        showSystemMessage('Error al cargar la lista de citas.', 'error');
+    });
+
+    // Listener para resultados de laboratorio
+    const labResultsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/labResults`);
+    const labResultsQuery = query(labResultsCollectionRef, orderBy("timestamp", "desc"));
+
+    onSnapshot(labResultsQuery, (snapshot) => {
+        labResultsList.innerHTML = '';
+        const labResults = [];
+        snapshot.forEach((doc) => {
+            labResults.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (labResults.length === 0) {
+            noLabResultsEntriesMessage.classList.remove('hidden');
+        } else {
+            noLabResultsEntriesMessage.classList.add('hidden');
+            labResults.forEach(result => {
+                const li = document.createElement('li');
+                li.className = 'bg-gray-50 p-4 rounded-md shadow-sm flex items-center justify-between';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-800">${result.testName}: ${result.value}</p>
+                        <p class="text-sm text-gray-600">Fecha: ${result.date}</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button data-id="${result.id}" data-collection="labResults" class="edit-labs-entry bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-md text-sm">Editar</button>
+                        <button data-id="${result.id}" data-collection="labResults" class="delete-labs-entry bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded-md text-sm">Eliminar</button>
+                    </div>
+                `;
+                labResultsList.appendChild(li);
+            });
+            document.querySelectorAll('.delete-labs-entry[data-collection="labResults"]').forEach(button => {
+                button.addEventListener('click', deleteLabsEntry);
+            });
+            document.querySelectorAll('.edit-labs-entry[data-collection="labResults"]').forEach(button => {
+                button.addEventListener('click', () => showSystemMessage('Funcionalidad de edición de resultados de laboratorio se implementará aquí.', 'info'));
+            });
+        }
+    }, (error) => {
+        console.error("Error al obtener resultados de laboratorio en tiempo real:", error);
+        showSystemMessage('Error al cargar el historial de laboratorios.', 'error');
+    });
+}
+
+/**
+ * Añade una nueva cita a Firestore.
+ */
+async function addNewAppointment() {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para añadir citas.', 'error');
+        return;
+    }
+
+    const name = document.getElementById('new-appointment-name').value.trim();
+    const date = document.getElementById('new-appointment-date').value;
+    const time = document.getElementById('new-appointment-time').value;
+    const place = document.getElementById('new-appointment-place').value.trim();
+
+    if (!name || !date || !time || !place) {
+        showSystemMessage('Por favor, completa todos los campos de la cita.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const appointmentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/appointments`);
+        await addDoc(appointmentsCollectionRef, {
+            name: name,
+            date: date,
+            time: time,
+            place: place,
+            timestamp: serverTimestamp() // Para ordenar si es necesario
+        });
+        
+        // Limpiar campos
+        document.getElementById('new-appointment-name').value = '';
+        document.getElementById('new-appointment-date').value = '';
+        document.getElementById('new-appointment-time').value = '';
+        document.getElementById('new-appointment-place').value = '';
+
+        showSystemMessage('Cita añadida exitosamente.', 'success');
+    } catch (e) {
+        console.error("Error al añadir cita:", e);
+        showSystemMessage('Error al añadir la cita. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+/**
+ * Añade un nuevo resultado de laboratorio a Firestore.
+ */
+async function addNewLabResult() {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para añadir resultados de laboratorio.', 'error');
+        return;
+    }
+
+    const testName = document.getElementById('new-lab-test-name').value.trim();
+    const value = document.getElementById('new-lab-result-value').value.trim();
+    const date = document.getElementById('new-lab-result-date').value;
+
+    if (!testName || !value || !date) {
+        showSystemMessage('Por favor, completa todos los campos del resultado de laboratorio.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const labResultsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/labResults`);
+        await addDoc(labResultsCollectionRef, {
+            testName: testName,
+            value: value,
+            date: date,
+            timestamp: serverTimestamp() // Para ordenar si es necesario
+        });
+        
+        // Limpiar campos
+        document.getElementById('new-lab-test-name').value = '';
+        document.getElementById('new-lab-result-value').value = '';
+        document.getElementById('new-lab-result-date').value = '';
+
+        showSystemMessage('Resultado de laboratorio añadido exitosamente.', 'success');
+    } catch (e) {
+        console.error("Error al añadir resultado de laboratorio:", e);
+        showSystemMessage('Error al añadir el resultado de laboratorio. Intenta de nuevo.', 'error');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+/**
+ * Elimina una entrada de citas o laboratorios.
+ * @param {Event} event - El evento de click del botón de eliminar.
+ */
+async function deleteLabsEntry(event) {
+    if (!db || !userId || !isAuthReady) {
+        showSystemMessage('La aplicación no está lista para eliminar registros.', 'error');
+        return;
+    }
+
+    const entryId = event.currentTarget.dataset.id;
+    const collectionName = event.currentTarget.dataset.collection;
+    if (!entryId || !collectionName) {
+        console.error("ID de entrada o nombre de colección no encontrado.");
+        showSystemMessage('Error: No se pudo identificar el registro a eliminar.', 'error');
+        return;
+    }
+
+    toggleLoading(true);
+    try {
+        const docRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}`, entryId);
+        await deleteDoc(docRef);
+        showSystemMessage('Registro eliminado.', 'success');
+    } catch (e) {
+        console.error(`Error al eliminar entrada de ${collectionName}:`, e);
+        showSystemMessage(`Error al eliminar el registro de ${collectionName}. Intenta de nuevo.`, 'error');
+    } finally {
+        toggleLoading(false);
+    }
 }
 
 
@@ -994,7 +1465,7 @@ async function deleteCardiologyEntry(event) {
 // --- Funciones para la sección de ATM Leve ---
 
 /**
- * Configura los listeners en tiempo real para la sección de ATM.
+ * Configura los listeners en tiempo real para la sección de ATM (Autismo).
  */
 function setupAutismListeners() {
     if (!db || !userId || !isAuthReady) {
@@ -1395,8 +1866,10 @@ profilePictureInput.addEventListener('change', function() {
             profilePicturePreview.src = e.target.result;
         };
         reader.readAsDataURL(file);
+        selectedFileNameDisplay.textContent = file.name; // Mostrar el nombre del archivo
     } else {
         profilePicturePreview.src = "https://placehold.co/80x80/cccccc/333333?text=Foto";
+        selectedFileNameDisplay.textContent = 'Ningún archivo seleccionado'; // Restablecer el texto
     }
 });
 
@@ -1434,7 +1907,9 @@ if ('serviceWorker' in navigator) {
 
 // --- Event Listeners ---
 window.addEventListener('load', initializeFirebase);
-profileForm.addEventListener('submit', saveUserProfile);
+profileSaveButton.addEventListener('click', saveUserProfile); // Botón de guardar perfil
+guidedActionButton.addEventListener('click', handleGuidedActionClick); // Botón de acción flotante
+
 addLiquidButton.addEventListener('click', addLiquidEntry);
 settingsButton.addEventListener('click', () => showSystemMessage('Funcionalidad de ajustes de líquidos (cambiar límite) se implementará aquí.', 'info'));
 
@@ -1442,6 +1917,12 @@ settingsButton.addEventListener('click', () => showSystemMessage('Funcionalidad 
 newMedFrequencySelect.addEventListener('change', generateMedTimeInputs);
 // Event listener para añadir nuevo medicamento
 addNewMedButton.addEventListener('click', addNewMed);
+
+// Event listener para añadir nueva cita
+document.getElementById('add-new-appointment-button').addEventListener('click', addNewAppointment);
+// Event listener para añadir nuevo resultado de laboratorio
+document.getElementById('add-new-lab-result-button').addEventListener('click', addNewLabResult);
+
 
 // Event listener para añadir nuevo contacto
 addNewContactButton.addEventListener('click', addNewContact);
@@ -1459,18 +1940,74 @@ addWellnessMetricButton.addEventListener('click', addWellnessMetric);
 addSleepRecordButton.addEventListener('click', addSleepRecord);
 
 // Event listener para el cambio en el tipo de diálisis/condición
-dialysisTypeSelect.addEventListener('change', updateConditionalSectionsVisibility);
+dialysisTypeSelect.addEventListener('change', () => {
+    updateConditionalSectionsVisibility();
+    // Cuando el tipo de diálisis cambia, el flujo guiado debe reiniciarse o ajustarse
+    // Si el usuario cambia el tipo de diálisis DESPUÉS de haber completado el registro,
+    // el botón guiado debe ocultarse y la navegación completa debe permanecer.
+    // Si lo cambia DURANTE el registro, el flujo debe adaptarse.
+    if (!isRegistrationComplete) {
+        currentGuidedFlowType = dialysisTypeSelect.value;
+        currentGuidedFlow = guidedFlowSections[currentGuidedFlowType] || guidedFlowSections['none'];
+        currentGuidedFlowIndex = -1; // Resetear el índice para que el botón muestre "Iniciar Registro Guiado"
+        showSection('profile-section'); // Volver al perfil
+    }
+    updateGuidedFlowState(); // Actualizar el estado del botón flotante
+    updateNavigationButtonsState(); // Actualizar el estado de los botones de navegación
+});
 
 
 // Navegación inferior
-navProfileButton.addEventListener('click', () => showSection('profile-section'));
-navLiquidsButton.addEventListener('click', () => showSection('liquids-section'));
-navMedsButton.addEventListener('click', () => showSection('meds-section'));
-navLabsButton.addEventListener('click', () => showSection('labs-section'));
-navAgendaButton.addEventListener('click', () => showSection('agenda-section'));
-navCardiologyButton.addEventListener('click', () => showSection('cardiology-section'));
-navAutismButton.addEventListener('click', () => showSection('autism-section')); // Ahora ATM
-navWellnessButton.addEventListener('click', () => showSection('wellness-section'));
+navProfileButton.addEventListener('click', () => {
+    if (navProfileButton.disabled) return;
+    showSection('profile-section');
+});
+navLiquidsButton.addEventListener('click', () => {
+    if (navLiquidsButton.disabled) return;
+    showSection('liquids-section');
+});
+navMedsButton.addEventListener('click', () => {
+    if (navMedsButton.disabled) return;
+    showSection('meds-section');
+});
+navLabsButton.addEventListener('click', () => {
+    if (navLabsButton.disabled) return;
+    showSection('labs-section');
+});
+
+// Listener para el botón "Más"
+navMoreButton.addEventListener('click', (event) => {
+    if (navMoreButton.disabled) return;
+    // Detener la propagación para que no se cierre inmediatamente si hay un click fuera
+    event.stopPropagation(); 
+    moreOptionsDropdown.classList.toggle('hidden');
+});
+
+// Cerrar el menú desplegable si se hace clic fuera de él
+document.addEventListener('click', (event) => {
+    if (!moreOptionsDropdown.contains(event.target) && !navMoreButton.contains(event.target)) {
+        moreOptionsDropdown.classList.add('hidden');
+    }
+});
+
+// Listeners para los elementos dentro del menú desplegable
+navAgendaButton.addEventListener('click', () => {
+    if (navAgendaButton.disabled) return;
+    showSection('agenda-section');
+});
+navCardiologyButton.addEventListener('click', () => {
+    if (navCardiologyButton.disabled) return;
+    showSection('cardiology-section');
+});
+navAutismButton.addEventListener('click', () => {
+    if (navAutismButton.disabled) return;
+    showSection('autism-section');
+});
+navWellnessButton.addEventListener('click', () => {
+    if (navWellnessButton.disabled) return;
+    showSection('wellness-section');
+});
+
 
 // Inicializar los campos de hora al cargar la página si ya hay una frecuencia preseleccionada
 window.addEventListener('DOMContentLoaded', generateMedTimeInputs);
