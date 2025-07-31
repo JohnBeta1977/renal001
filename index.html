@@ -15,24 +15,24 @@
     <meta property="og:url" content="https://johnbeta1977.github.io/renal001/">
     <meta property="og:title" content="RenalCare PWA - Tu Compañero de Salud Renal">
     <meta property="og:description" content="RenalCare PWA: Aplicación integral para el seguimiento de pacientes renales, hipertensos y con ATM leve. Registra líquidos, medicamentos, síntomas y más.">
-    <meta property="og:image" content="https://johnbeta1977.github.io/renal001/image/logo.png">
+    <meta property="og:image" content="https://johnbeta1977.github.io/renal001/IAMGES/logo.png">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://johnbeta1977.github.io/renal001/">
     <meta property="twitter:title" content="RenalCare PWA - Tu Compañero de Salud Renal">
     <meta property="twitter:description" content="RenalCare PWA: Aplicación integral para el seguimiento de pacientes renales, hipertensos y con ATM leve. Registra líquidos, medicamentos, síntomas y más.">
-    <meta property="twitter:image" content="https://johnbeta1977.github.io/renal001/image/logo.png">
+    <meta property="twitter:image" content="https://johnbeta1977.github.io/renal001/IAMGES/logo.png">
 
     <!-- Configuración PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="https://johnbeta1977.github.io/renal001/manifest.json">
     <meta name="theme-color" content="#2196F3"> <!-- Color primario azul -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RenalCare">
-    <!-- Iconos PWA y Favicon ahora directamente en /image/ -->
-    <link rel="apple-touch-icon" href="/image/icon-192x192.png">
-    <link rel="icon" type="image/png" href="/image/icon-192x192.png">
+    <!-- Iconos PWA y Favicon ahora directamente en /IAMGES/ -->
+    <link rel="apple-touch-icon" href="https://johnbeta1977.github.io/renal001/IAMGES/icon-192x192.png">
+    <link rel="icon" type="image/png" href="https://johnbeta1977.github.io/renal001/IAMGES/icon-192x192.png">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,7 +45,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8; /* Gris claro de fondo */
             color: #333;
-            background-image: url('/image/bg.jpg'); /* Imagen de fondo */
+            background-image: url('https://johnbeta1977.github.io/renal001/IAMGES/bg.jpg'); /* Imagen de fondo */
             background-size: cover;
             background-attachment: fixed;
             background-position: center;
@@ -155,7 +155,7 @@
 
         /* Estilos para el menú desplegable de "Más opciones" */
         #more-options-dropdown {
-            position: absolute;
+            position: fixed; /* Usar fixed para el dropdown ya que está fuera del nav */
             bottom: calc(3.5rem + 0.5rem); /* Encima del footer con un pequeño margen */
             right: 1rem;
             background-color: #ffffff;
@@ -164,6 +164,8 @@
             padding: 0.5rem 0;
             z-index: 999; /* Justo debajo del footer para que no lo tape */
             min-width: 150px; /* Ancho mínimo para los items */
+            display: none; /* Oculto por defecto, se muestra con JS */
+            flex-direction: column; /* Apilar elementos verticalmente */
         }
         #more-options-dropdown .bottom-nav-item {
             width: 100%;
@@ -171,16 +173,55 @@
             padding: 0.5rem 1rem;
             flex-direction: row; /* Icono y texto en la misma fila */
             gap: 0.5rem; /* Espacio entre icono y texto */
+            font-size: 0.875rem; /* Texto más grande en el dropdown */
         }
         #more-options-dropdown .bottom-nav-item span {
-            font-size: 0.875rem; /* Texto más grande en el dropdown */
+            font-size: 0.875rem; /* Asegurar tamaño de texto consistente en el dropdown */
+        }
+
+        /* MOBILE-FIRST: Ocultar los ítems del menú "Más" por defecto en móvil */
+        /* Agenda y Bienestar ahora son visibles por defecto en móvil */
+        #nav-cardiology,
+        #nav-autism {
+            display: none; /* Estos se mostrarán en el dropdown si aplica */
+        }
+
+        /* Mostrar el botón "Más" en móvil */
+        #nav-more {
+            display: flex;
+        }
+
+        /* DESKTOP STYLES: Sobreescribir para PC */
+        @media (min-width: 768px) { /* Tailwind's md breakpoint */
+            .bottom-nav {
+                justify-content: space-around; /* Distribuir uniformemente en desktop */
+            }
+
+            /* Mostrar todos los ítems de navegación principales directamente en desktop */
+            #nav-profile,
+            #nav-liquids,
+            #nav-meds,
+            #nav-labs,
+            #nav-agenda,
+            #nav-wellness, /* Agenda y Bienestar ahora visibles directamente en desktop */
+            #nav-cardiology, /* Cardiología y ATM también visibles directamente si son relevantes */
+            #nav-autism {
+                display: flex !important; /* Forzar display flex para anular 'hidden' de JS si aplica */
+                flex-grow: 0; /* No estirar en desktop */
+            }
+
+            /* Ocultar el botón "Más" y el dropdown en desktop */
+            #nav-more,
+            #more-options-dropdown {
+                display: none !important;
+            }
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
     <header id="main-header" class="bg-blue-600 text-white p-4 shadow-md transition-all duration-300 ease-in-out">
         <div class="container flex justify-between items-center h-full">
-            <img src="https://johnbeta1977.github.io/renal001/image/logo.png" alt="RenalCare Logo" class="logo transition-all duration-300 ease-in-out">
+            <img src="https://johnbeta1977.github.io/renal001/IAMGES/logo.png" alt="RenalCare Logo" class="logo transition-all duration-300 ease-in-out">
             <nav>
                 <!-- Aquí irá la navegación futura -->
             </nav>
@@ -816,6 +857,14 @@
                 <i class="fas fa-flask text-xl"></i>
                 <span class="text-xs mt-1">Citas/Labs</span>
             </button>
+            <button id="nav-agenda" class="bottom-nav-item">
+                <i class="fas fa-address-book text-xl"></i>
+                <span class="text-xs mt-1">Agenda</span>
+            </button>
+            <button id="nav-wellness" class="bottom-nav-item">
+                <i class="fas fa-leaf text-xl"></i>
+                <span class="text-xs mt-1">Bienestar</span>
+            </button>
             <button id="nav-more" class="bottom-nav-item">
                 <i class="fas fa-ellipsis-h text-xl"></i>
                 <span class="text-xs mt-1">Más</span>
@@ -825,10 +874,6 @@
 
     <!-- Menú desplegable para "Más opciones" -->
     <div id="more-options-dropdown" class="hidden fixed rounded-lg">
-        <button id="nav-agenda" class="bottom-nav-item">
-            <i class="fas fa-address-book text-xl"></i>
-            <span class="text-xs mt-1">Agenda</span>
-        </button>
         <button id="nav-cardiology" class="bottom-nav-item hidden">
             <i class="fas fa-heartbeat text-xl"></i>
             <span class="text-xs mt-1">Cardiología</span>
@@ -836,10 +881,6 @@
         <button id="nav-autism" class="bottom-nav-item hidden">
             <i class="fas fa-brain text-xl"></i>
             <span class="text-xs mt-1">ATM</span>
-        </button>
-        <button id="nav-wellness" class="bottom-nav-item">
-            <i class="fas fa-leaf text-xl"></i>
-            <span class="text-xs mt-1">Bienestar</span>
         </button>
     </div>
 
@@ -849,6 +890,6 @@
     </button>
 
     <!-- Script principal de la aplicación -->
-    <script src="/app.js"></script>
+    <script src="https://johnbeta1977.github.io/renal001/app.js"></script>
 </body>
 </html>
